@@ -18,11 +18,25 @@
 //    2016.04.08  create for RX63N( GR-SAKURA ) base-system
 //
 
+// -------------------------------------------------------
+// ---------------------------------------------- Includes
 #include "rx63n/iodefine.h"
 #include "rx63n/iodefine_enum.h"
 
+//#include "rx63n/PortUtils.h"
+
+// -------------------------------------------------------
+// ----------------------------------------------- Defines
 #define sleep(X) for(j = 0; j < X*1000; j++) {}
 
+// -------------------------------------------------------
+// -------------------------------- Proto-type declaration
+void DataDisp( unsigned char );
+void MPCUnlock( void );
+void MPCLock( void );
+      
+// -------------------------------------------------------
+// ------------------------------------------ Main routine  
 int main( void )
 {
   char i=0;
@@ -63,7 +77,11 @@ int main( void )
   PORTA.PMR.BIT.B7 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTA.PDR.BIT.B7 = PDR_IN;         // PDR_IN / PDR_OUT
   
-  // P4 -> ADC input (3.3V)
+  // P4 -> ADC input (Vref 3.3V)
+  /* PortConfADC( MPC.P40PFS, ASEL_ON, ISEL_OFF, PORT4, 0, PMR_FUNC, PDR_IN, 0 ); */
+  /* PortConfADC( MPC.P41PFS, ASEL_ON, ISEL_OFF, PORT4, 1, PMR_FUNC, PDR_IN, 0 ); */
+  /* PortConfADC( MPC.P42PFS, ASEL_ON, ISEL_OFF, PORT4, 2, PMR_FUNC, PDR_IN, 0 ); */
+  /* PortConfADC( MPC.P43PFS, ASEL_ON, ISEL_OFF, PORT4, 3, PMR_FUNC, PDR_IN, 0 ); */
   MPC.P40PFS.BIT.ISEL  = ISEL_OFF;
   MPC.P40PFS.BIT.ASEL  = ASEL_ON;
   MPC.P41PFS.BIT.ISEL  = ISEL_OFF;
@@ -75,33 +93,28 @@ int main( void )
   PORT4.PMR.BIT.B0 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B1 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B2 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
-  PORT4.PMR.BIT.B4 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+  PORT4.PMR.BIT.B3 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   
-  // PJ3 -> PPM output (3.3V)
-  MPC.PJ3PFS.BIT.PSEL  = PJ3PFS_MTIOC3C;
-  //MPC.PJ3PFS.BIT.PSEL  = PJ3PFS_CSI0;
-  PORTJ.PMR.BIT.B3     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+  // P21 -> PPM output (3.3V)
+  /* PortConfMPC( PDR_OUT, 0, PMR_FUNC, P21PFS_TIOCA3 ); */
+  MPC.P21PFS.BIT.PSEL  = P21PFS_TIOCA3;
+  PORT2.PMR.BIT.B1     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   MPCLock();
 
-  //
-  
   // test (primitive ppm)
   PORTJ.PODR.BIT.B3    = 1;
   PORTJ.PDR.BIT.B3     = PDR_OUT;       // PMR_GPIO / PMR_FUNC
   PORTJ.PMR.BIT.B3     = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
+
+  // Module stop setting
+  MSTP(TMR0) = MSTP_STOP;  // MSTP_RUN / MSTP_STOP
+  MSTP(TMR2) = MSTP_STOP;
   
-  // MTU setting (after, to be functional to another file )
-  MTU3.TCR.BIT.TPSC = TPSC_PCLK_16;  // PCLK/16
-  MTU3.TCR.BIT.CKEG = CKEG_PEDGE;    // Pos edge
-  MTU3.TCR.BIT.CCLR = CCLR_TGRC;     // Both edge
-  MTU3.TMDR.BIT.MD =  TMDR_MD_NORMAL;     // Normal mode
-  MTU3.TMDR.BIT.BFA = TMDR_BFx_BUFF;     // Buffered operation
-  MTU3.TMDR.BIT.BFB = TMDR_BFx_NORM;     // unbuffered	
-
-
+  // TPUa setting
+  
   
   // ADC setting
-  //S12ADC.ADCSR.
+  S12ADC.ADCSR.
 	  
   // Total frame length = 22.5msec
   // each pulse is 0.7..1.7ms long with a 0.3ms stop tail
@@ -181,10 +194,13 @@ int main( void )
   
 }
 
+void INT_Excep_TPU3_TGI3A(void){
+  return;
+}
+
 
 // -------------------------------------------------------
 // -------------------------------- Functions( Utilities )
-
 //
 //  disp data on LED ( mounted on Eval Brd. )
 //
@@ -196,6 +212,7 @@ void DataDisp( unsigned char data ){
   PORTA.PODR.BIT.B6 = ( (data >> 6) & 0x01 );
 }
 
+ 
 //
 //  lock / unlock MPC reg edit
 //

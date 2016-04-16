@@ -6,6 +6,12 @@
 #define ADDRESS_HOCOCR2 (( unsigned char *)0x00080037/*HOCOCR2*/)
 #define ADDRESS_PMCTLTSTR (( unsigned char *) 0x0008c2e0/*PMCLTSTR*/)
 
+// bit meanings of Module stop bit
+enum enum_MSTP{
+  MSTP_RUN,
+  MSTP_STOP
+};
+
 // bit meanings of I/O Port
 enum enum_PMR {
   PMR_GPIO,
@@ -49,15 +55,15 @@ enum enum_PmnPFS_ASEL {
 };
 
 enum enum_P21PFS_PSEL {
-  PJ3PFS_HIZ,
-  PJ3PFS_MTIOC1B,
-  PJ3PFS_TIOCA3=3,
-  PJ3PFS_TMCI0,
-  PJ3PFS_P01,
-  PJ3PFS_RXD0=10,        //01010b
-  PJ3PFS_SCL1=15,        //01111b
-  PJ3PFS_USB0_EXICEN=19, //10011b
-  PJ3PFS_PIXD5=28        //01111b
+  P21PFS_HIZ,
+  P21PFS_MTIOC1B,
+  P21PFS_TIOCA3=3,
+  P21PFS_TMCI0,
+  P21PFS_P01,
+  P21PFS_RXD0=10,        //01010b
+  P21PFS_SCL1=15,        //01111b
+  P21PFS_USB0_EXICEN=19, //10011b
+  P21PFS_PIXD5=28        //01111b
 };
 
 enum enum_PJ3PFS_PSEL {
@@ -66,6 +72,39 @@ enum enum_PJ3PFS_PSEL {
   PJ3PFS_CSI6=10,//1010b
   PJ3PFS_CSI0=11//1011b
 };
+
+// bit meanings of TPUa
+
+
+// bit meanings of S12ADa
+enum enum_S12AD_ADCSR_EXTRG {
+  EXTRG_SYNC,   // synchronous (MTU, TPU, TMR)
+  EXTRG_ASYN    // asynchronous
+};
+
+enum enum_S12AD_ADCSR_TRGE {
+  TRGE_DE,   // inhibit
+  TRGE_EN    // permit
+};
+
+enum enum_S12AD_ADCSR_CKS {
+  CKS_PCLK_8,   // PCLK/8
+  CKS_PCLK_4,   // PCLK/4
+  CKS_PCLK_2,   // PCLK/2
+  CKS_PCLK   // PCLK
+};
+
+enum enum_S12AD_ADCSR_ADIE {
+  ADIE_DE,   // inhibit
+  ADIE_EN    // permit
+};
+
+enum enum_S12AD_ADCSR_ADCS {
+  ADCS_SINGLE,  // single-scan mode
+  ADCS_CONT     // continuous scan mode
+};
+
+
 
 // bit meanings of MTU2a
 enum enum_MTU34_TCR_TPSC {
