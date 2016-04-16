@@ -1,6 +1,7 @@
 ##
 ##   hTxoRX
 ## Homwbrew-radio control Tx based on RX63N Microcontroller ( Renesas GR-Sakura )
+
 ##
 ## This firmware is developed by using following open-source software and information
 ##   - C Template supporting offline development for Renesas GR-Sakura on Unix
