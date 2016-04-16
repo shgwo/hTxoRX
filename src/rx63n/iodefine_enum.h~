@@ -1,0 +1,22 @@
+#ifndef __IODEFINE_ENUM_H__
+#define __IODEFINE_ENUM_H__
+
+#include "iodefine.h"
+#include "rxfunc_pow.h"
+
+#define ADDRESS_HOCOCR2 (( unsigned char *)0x00080037/*HOCOCR2*/)
+#define ADDRESS_PMCTLTSTR (( unsigned char *) 0x0008c2e0/*PMCLTSTR*/)
+
+// bit meanings of OPCMTSF
+enum enum_OPCMTSF {
+  OPCMTSF_CMPL,
+  OPCMTSF_RUN
+};
+
+enum enum_CKSEL {
+  CKSEL_LOCO,
+  CKSEL_HOCO,
+  CKSEL_MOSC,
+  CKSEL_SOSC,
+          CKSEL_PLL
+};

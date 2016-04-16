@@ -1,4 +1,5 @@
-TARGET = blink
+TARGET = main
+DST_DL=/media/`whoami`/GR-SAKURA
 
 #### Setup ####
 TOOLCHAIN	= rx-elf
@@ -31,8 +32,8 @@ $(TARGET).bin: $(TARGET).elf
 	$(SIZE) $(TARGET).elf
 
 install: $(TARGET).elf
-	cp $(TARGET).bin /media/GR-SAKURA/
-	pumount /media/GR-SAKURA
+	cp $(TARGET).bin $(DST_DL)
+	pumount $(DST_DL)
 
 clean:
 	rm -f *.elf *.bin src/*.o
