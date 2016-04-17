@@ -6,11 +6,106 @@
 #define ADDRESS_HOCOCR2 (( unsigned char *)0x00080037/*HOCOCR2*/)
 #define ADDRESS_PMCTLTSTR (( unsigned char *) 0x0008c2e0/*PMCLTSTR*/)
 
+// bit meanings of System Critical Protect register
+enum enum_PRCR_PRCn {
+  PRCn_LOCK,  // register lock
+  PRCn_UNLOCK // register unlock
+};
+
+enum enum_PRCR_PRCR {
+  PRKEY_LOCK,       // register lock
+  PRKEY_UNLOCK=0xA5 // register unlock
+};
+
+
+// bit meanings of Clock Gen Circuit Module
+enum enum_SCKCR_XCK {
+  // System Clock Control Register
+  XCK_DIV_1,   // PLLCK
+  XCK_DIV_2,   // PLLCK /2
+  XCK_DIV_4,   // PLLCK /4
+  XCK_DIV_8,   // PLLCK /8
+  XCK_DIV_16,  // PLLCK /16
+  XCK_DIV_32,  // PLLCK /32
+  XCK_DIV_64,  // PLLCK /64
+  XCK_DIV_XX   // prohibit
+};
+
+enum enum_SCKCR_PSTOP0 {
+  // SDCLK Pin Output Control
+  PSTOP0_EN,   // SDCLK enable
+  PSTOP0_DE    // SDCLK_disable
+};
+
+enum enum_SCKCR_PSTOP1 {
+  // BCLK Pin Output Control
+  PSTOP1_EN,   // SDCLK enable
+  PSTOP1_DE    // SDCLK_disable
+};
+
+enum enum_SCKCR2_IECK {
+  // IEBUS Clock (IECLK)  Select
+  IECK_DIV_2,   // PLLCK /2
+  IECK_DIV_4,   // PLLCK /4
+  IECK_DIV_8,   // PLLCK /8
+  IECK_DIV_16,  // PLLCK /16
+  IECK_DIV_32,  // PLLCK /32
+  IECK_DIV_64,  // PLLCK /64
+  IECK_DIV_6    // PLLCK /6
+};
+
+enum enum_SCKCR2_UCK {
+  // USB Clock (UCLK) Select
+  UCK_DIV_3,   // PLLCK /3
+  UCK_DIV_4    // PLLCK /4
+};
+
+enum enum_SCKCR3_CKSEL {
+  // PLL Input Frequency Division Ratio Select
+  CKSEL_LOCO,
+  CKSEL_HOCO,
+  CKSEL_MOSC,
+  CKSEL_SOSC,
+  CKSEL_PLL
+};
+
+enum enum_PLLCR_PLIDIV {
+  // Frequency Multiplication Factor Select
+  PLIDIV_1,  // x1
+  PLIDIV_2,  // x1/2
+  PLIDIV_4   // x1/4
+};
+
+enum enum_PLLCR_STC {
+  // Frequency Multiplication Factor Select
+  STC_8X=7,
+  STC_10X=9,
+  STC_12X=11,
+  STC_16X=15,
+  STC_20X=19,
+  STC_24X=23,
+  STC_25X,
+  STC_50X=49
+};
+
+enum enum_PLLCR2_PLLEN {
+  // PLL Input Frequency Division Ratio Select
+  PLLEN_RUN,   // PLL is operating
+  PLLEN_STOP   // PLL is stopping
+};
+
+enum enum_MOSCCR_MOSTP {
+  // Main Clock Oscillator Stop
+  MOSTP_RUN,   // MOSC is operating
+  MOSTP_STOP  // MOSC is stopping
+};
+
 // bit meanings of Module stop bit
-enum enum_MSTP{
+enum enum_MSTP {
   MSTP_RUN,
   MSTP_STOP
 };
+
 
 // bit meanings of I/O Port
 enum enum_PMR {
@@ -35,11 +130,13 @@ enum enum_PCR {
 
 // bit meanings of MPC
 enum enum_PWPR_PFSWE {
+  // PFS Register Write Enable
   PFSWE_LOCK,   // inhibit
   PFSWE_UNLOCK  // permit
 };
 
 enum enum_PWPR_B0WI {
+  // PFSWE Bit Write Disable
   B0WI_UNLOCK,  // permit "PFSWE" edit
   B0WI_LOCK     // inhibit "PFSWE" edit
 };
@@ -73,7 +170,180 @@ enum enum_PJ3PFS_PSEL {
   PJ3PFS_CSI0=11//1011b
 };
 
+
+// bit meanings of MTU2a
+enum enum_MTU34_TCR_TPSC {
+  TPSC_PCLK,      // PCLK
+  TPSC_PCLK_4,    // PCLK/4
+  TPSC_PCLK_16,   // PCLK/16
+  TPSC_PCLK_64,   // PCLK/64
+  TPSC_PCLK_256,  // PCLK/256
+  TPSC_PCLK_1024, // PCLK/1024
+  TPSC_MTCLKA,    // MTCLKA
+  TPSC_MTCLKB     // MTCLKB
+};
+
+enum enum_MTU34_TCR_CKEG {
+  CKEG_PEDGE,     // Pos edge
+  CKEG_NEDGE,     // Neg edge
+  CKEG_EDGE       // Both edge
+};
+
+enum enum_MTU34_TCR_CCLR {
+  CCLR_OFF,      // OFF
+  CCLR_TGRA,     // by TGRA
+  CCLR_TGRB,     // by TGRB
+  CCLR_SYNC,     // by other synced ch
+  CCLR_OFF_,     // OFF
+  CCLR_TGRC,     // by TGRC
+  CCLR_TGRD,     // by TGRD
+  CCLR_SYNC_,    // by other synced ch
+};
+
+enum enum_MTU34_TMDR_MD {
+  TMDR_MD_NORMAL,      // OFF
+  TMDR_MD_XXX0,     // prohibit
+  TMDR_MD_PWM1,     // PWM1 mode
+  TMDR_MD_PWM2,     // PWM2 mode
+  TMDR_MD_PHC1,     // Phase counter 1 mode
+  TMDR_MD_PHC2,     // Phase counter 2 mode
+  TMDR_MD_PHC3,     // Phase counter 3 mode
+  TMDR_MD_PHC4,     // Phase counter 4 mode
+  TMDR_MD_PWMRST,   // PWM w/ reset mode
+  TMDR_MD_XXX1,     // prohibit
+  TMDR_MD_XXX2,     // prohibit
+  TMDR_MD_XXX3,     // prohibit
+  TMDR_MD_CPWM1,     // Transfer in crest
+  TMDR_MD_CPWM2,     // Transfer in trough
+  TMDR_MD_CPWM3,     // Transfer in both
+};
+
+enum enum_MTU34_TMDR_BFx {
+  TMDR_BFx_NORM,     // unbuffered func (TGR A&C / B&D / MTU0. E&F)
+  TMDR_BFx_BUFF,     // buffered func
+};
+
+
 // bit meanings of TPUa
+enum enum_TPU39_TCR_TPSC {
+  // Timer Prescaler Select
+  TPU39_TPSC_PCLK,       // PCLK
+  TPU39_TPSC_PCLK_4,     // PCLK/4
+  TPU39_TPSC_PCLK_16,    // PCLK/16
+  TPU39_TPSC_PCLK_64,    // PCLK/64
+  TPU39_TPSC_EXCLK,      // External clock
+                         // (TPU3:TCLKA pin / TPU9:TCLKE pin)
+  TPU39_TPSC_PCLK_1024,  // PCLK/1024
+  TPU39_TPSC_PCLK_256,   // PCLK/256
+  TPU39_TPSC_PCLK_4096   // PCLK/4096
+};
+
+enum enum_TPU_TCR_CKEG {
+  // Input Clock Edge Select
+  TPU_CKEG_EDGE_IN_EP,  // Int: falling / Ext: rising
+  TPU_CKEG_EDGE_IP_EN,  // Int: rising  / Ext: falling
+  TPU_CKEG_EDGE         // Both edge
+};
+
+enum enum_TPU_TCR_CCLR {
+  // Counter Clear Source Select
+  TPU_CCLR_OFF,      // OFF
+  TPU_CCLR_TGRA,     // by TGRA
+  TPU_CCLR_TGRB,     // by TGRB
+  TPU_CCLR_SYNC,     // by other synced ch
+  TPU_CCLR_OFF_,     // OFF
+  TPU_CCLR_TGRC,     // by TGRC (only TPU0369)
+  TPU_CCLR_TGRD,     // by TGRD (only TPU0369)
+  TPU_CCLR_SYNC_     // by other synced ch (TPU0369)
+};
+
+enum enum_TPU_TMDR_MD {
+  // Mode Select
+  TPU_MD_NORM,     // Normal operation
+  TPU_MD_XXX0,     // prohibit
+  TPU_MD_PWM1,     // PWM1 mode
+  TPU_MD_PWM2,     // PWM2 mode
+  TPU_MD_PHC1,     // Phase counter 1 mode
+  TPU_MD_PHC2,     // Phase counter 2 mode
+  TPU_MD_PHC3,     // Phase counter 3 mode
+  TPU_MD_PHC4     // Phase counter 4 mode
+};
+
+enum enum_TPU_TMDR_ICSELB {
+  // TGRB Input Capture Input Select
+  TPU_ICSELB_TIOCBn,    // TIOCBn
+  TPU_ICSELB_TIOCAn     // TIOCAn
+};
+
+enum enum_TPU_TMDR_ICSELD {
+  // TGRB Input Capture Input Select
+  TPU_ICSELD_TIOCDn,    // TIOCDn pin
+  TPU_ICSELD_TIOCCn     // TIOCCn pin
+};
+
+enum enum_TPU39_TIOR_IOX {
+  // TGRA Control
+  TPU_IOX_DE,      // disabled
+  TPU_IOX_OLCL,    // Output: init Low / cmatch Low
+  TPU_IOX_OLCH,    // Output: init Low / cmatch High
+  TPU_IOX_OLCT,    // Output: init Low / cmatch toggle
+  TPU_IOX_DE_,     // disabled
+  TPU_IOX_OHCL,    // Output: init High / cmatch Low
+  TPU_IOX_OHCH,    // Output: init High / cmatch High
+  TPU_IOX_OHCT,    // Output: init High / cmatch toggle
+  TPU_IOX_IPEDGE,  // Input(IOA): TIOCAn pin capture at pos edge
+                   // Input(IOB): TIOCBn / TIOCAn (by ISELB) pin capture at pos edge
+                   // Input(IOC): TIOCCn pin capture at pos edge
+                   // Input(IOD): TIOCCn / TIOCDn (by ISELD) pin capture at pos edge
+  TPU_IOX_INEDGE,  // Input: TIOCAn pin capture at neg edge
+  TPU_IOX_IEDGE,   // Input: TIOCAn pin capture at both edge
+  TPU_IOX_IEDGE_,  // same as above
+  TPU_IOX_TCNT     // Input: TPU0 -> TPU1.TCNT / TPU6 -> TPU7.TCNT
+                   //        TPU1 -> TPU0.TCNT / TPU7 -> TPU6.TCNT
+                   //        TPU2 -> None / TPU8 -> None
+                   //        TPU3 -> TPU4.TCNT / TPU9 -> TPU10.TCNT
+                   //        TPU4 -> TPU3.TCNT / TPU10 -> TPU9.TCNT
+                   //        TPU5 -> None / TPU11 -> None
+};
+
+enum enum_TPU_TIER_TGIEX {
+  TGIEX_DE,   // disable
+  TGIEX_EN    // enable
+};
+
+enum enum_TPU_TIER_TTGE {
+  // A/D Conversion Start Request Enable
+  TTGE_DE,    // disable
+  TTGE_EN     // enable
+};
+
+enum enum_TPU_NFCR_NFnEN {
+  // Noise Filter Enable m
+  NFnEN_DE,    // disable
+  NFnEN_EN     // enable
+};
+
+enum enum_TPU_NFCR_NFCS {
+  // Noise Filter Clock Select
+  NFCS_PCLK,      // NF CLK -> PCLK/1
+  NFCS_PCLK_8,    // NF CLK -> PCLK/8
+  NFCS_PCLK_32,   // NF CLK -> PCLK/32
+  NFCS_CCLK       // Clock source that drives counting
+};
+
+
+// bit meanings of TPUA to B
+enum enum_TPU_TSTR_CSTn {
+  // Counter Start n
+  CSTn_STOP,    // count stop
+  CSTn_RUN      // count start
+};
+
+enum enum_TPU_TSTR_SYNCn {
+  // Timer Synchronization n
+  SYNCn_IND,      // operates independently
+  SYNCn_SYNC      // operates w/ synchronization
+};
 
 
 // bit meanings of S12ADa
@@ -136,7 +406,8 @@ enum enum_S12AD_ADCER_ADRFMT { // AD Register ForMaT
   ADRFMT_FLLEFT        // flush-left format
 };
 
-enum enum_S12AD_ADSTRGR_ADSTRS { // AD Start TRiGer Register
+enum enum_S12AD_ADSTRGR_ADSTRS {
+  // AD Start TRiGer Register
   ADSTRS_ASYN,       // flush-right format
   ADSTRS_TRG0AN_0,      // MTU0.TGRA & MTU0.TCNT
   ADSTRS_TRG0BN_0,      // MTU0.TGRB & MTU0.TCNT
@@ -173,66 +444,6 @@ enum enum_S12AD_ADEXICR_OCS {
   // A/D Internal Reference Voltage A/D Conversion Select
   OCS_DE,         // addition mode
   OCS_EN          // disable
-};
-
-// bit meanings of MTU2a
-enum enum_MTU34_TCR_TPSC {
-  TPSC_PCLK,      // PCLK
-  TPSC_PCLK_4,    // PCLK/4
-  TPSC_PCLK_16,   // PCLK/16
-  TPSC_PCLK_64,   // PCLK/64
-  TPSC_PCLK_256,  // PCLK/256
-  TPSC_PCLK_1024, // PCLK/1024
-  TPSC_MTCLKA,    // MTCLKA
-  TPSC_MTCLKB     // MTCLKB
-};
-
-enum enum_MTU34_TCR_CKEG {
-  CKEG_PEDGE,     // Pos edge
-  CKEG_NEDGE,     // Neg edge
-  CKEG_EDGE       // Both edge
-};
-
-enum enum_MTU34_TCR_CCLR {
-  CCLR_OFF,      // OFF
-  CCLR_TGRA,     // by TGRA
-  CCLR_TGRB,     // by TGRB
-  CCLR_SYNC,     // by other synced ch
-  CCLR_OFF_,     // OFF
-  CCLR_TGRC,     // by TGRC
-  CCLR_TGRD,     // by TGRD
-  CCLR_SYNC_,    // by other synced ch
-};
-
-enum enum_MTU34_TMDR_MD {
-  TMDR_MD_NORMAL,      // OFF
-  TMDR_MD_XXX0,     // prohibit
-  TMDR_MD_PWM1,     // PWM1 mode
-  TMDR_MD_PWM2,     // PWM2 mode
-  TMDR_MD_PHC1,     // Phase counter 1 mode
-  TMDR_MD_PHC2,     // Phase counter 2 mode
-  TMDR_MD_PHC3,     // Phase counter 3 mode
-  TMDR_MD_PHC4,     // Phase counter 4 mode
-  TMDR_MD_PWMRST,   // PWM w/ reset mode
-  TMDR_MD_XXX1,     // prohibit
-  TMDR_MD_XXX2,     // prohibit
-  TMDR_MD_XXX3,     // prohibit
-  TMDR_MD_CPWM1,     // Transfer in mountain
-  TMDR_MD_CPWM2,     // Transfer in valley
-  TMDR_MD_CPWM3,     // Transfer in both
-};
-
-enum enum_MTU34_TMDR_BFx {
-  TMDR_BFx_NORM,     // unbuffered func (TGR A&C / B&D / MTU0. E&F)
-  TMDR_BFx_BUFF,     // buffered func
-};
-
-enum enum_CKSEL {
-  CKSEL_LOCO,
-  CKSEL_HOCO,
-  CKSEL_MOSC,
-  CKSEL_SOSC,
-  CKSEL_PLL
 };
 
 #endif
