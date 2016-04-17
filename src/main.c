@@ -113,9 +113,28 @@ int main( void )
   // TPUa setting
   
   
-  // ADC setting
-  S12ADC.ADCSR.
-	  
+  // ADC setting (to do: librarize setting process)
+  S12AD.ADCSR.BIT.ADST  = ADST_STOP;   // ADST_START / ADST_STOP
+  // scan ch setting
+  S12AD.ADADC.BIT.ADC   = ADADC_X4;   // ADADC_X1 / ADADC_X2 / ADADC_X3 / ADADC_X4
+  S12AD.ADADS0.WORD     = 0x000F;   // (0000000000001111) AN000 - 015
+  S12AD.ADADS1.WORD     = 0x0000;   // (0000000000011111) AN016 - 020
+  S12AD.ADANS0.WORD     = 0x000F;   // (0000000000001111) AN000 - 015
+  S12AD.ADANS1.WORD     = 0x0000;   // (0000000000011111) AN016 - 020
+
+  // config
+  S12AD.ADCER.BIT.ACE     = ACE_DE;          // ACE_DE / ACE_EN
+  S12AD.ADCER.BIT.ADRFMT  = ADRFMT_FLLEFT;   // ADRFMT_FLRIGHT / ADRFMT_FLLEFT
+  S12AD.ADSTRGR.BIT.ASTRS = ADSTRS_TRGAN_1;  // TPUn.TGRA
+  S12AD.ADSSTR.BIT.SST    = 0x1E;            // A/D Sampling State Register 01 -> (30 steps)
+  S12AD.ADCSR.BIT.CKS     = CKS_PCLK_2;      // CKS_PCLK_8 / CKS_PCLK_4 / CKS_PCLK_2 / CKS_PCLK
+  S12AD.ADCSR.BIT.ADIE    = ADIE_DE;         // ADIE_DE / ADIE_EN
+  S12AD.ADCSR.BIT.EXTRG   = EXTRG_SYNC;      // EXTRG_SYNC / EXTRG_ASYN
+  S12AD.ADCSR.BIT.TRGE    = TRGE_EN;         // TRGE_EN / TRGE_DE
+  S12AD.ADCSR.BIT.ADCS    = ADCS_SINGLE;     // ADCS_SINGLE / ADCS_CONT
+  S12AD.ADCSR.BIT.ADST    = ADST_STOP;       // ADST_START / ADST_STOP
+  
+  
   // Total frame length = 22.5msec
   // each pulse is 0.7..1.7ms long with a 0.3ms stop tail
   // The pulse ISR is 2mhz that's why everything is multiplied by 2

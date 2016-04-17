@@ -91,7 +91,7 @@ enum enum_S12AD_ADCSR_CKS {
   CKS_PCLK_8,   // PCLK/8
   CKS_PCLK_4,   // PCLK/4
   CKS_PCLK_2,   // PCLK/2
-  CKS_PCLK   // PCLK
+  CKS_PCLK      // PCLK
 };
 
 enum enum_S12AD_ADCSR_ADIE {
@@ -104,7 +104,76 @@ enum enum_S12AD_ADCSR_ADCS {
   ADCS_CONT     // continuous scan mode
 };
 
+enum enum_S12AD_ADCSR_ADST {
+  ADST_STOP,    // Stop conversion
+  ADST_START    // Start conversion
+};
 
+enum enum_S12AD_ADANS {
+  ADANS_DE,    // disselect to conversion
+  ADANS_EN     // select to conversion
+};
+
+enum enum_S12AD_ADADS {
+  ADADS_DE,    // disselect to operate addition mode
+  ADADS_EN     // select to operate addition mode
+};
+
+enum enum_S12AD_ADADC_ADC { // ADdition Count select
+  ADADC_X1,    // 1 time conversion
+  ADADC_X2,    // 2 time conversion
+  ADADC_X3,    // 3 time conversion
+  ADADC_X4     // 4 time conversion
+};
+
+enum enum_S12AD_ADCER_ACE { // Automatic Clearing Enable
+  ACE_DE,      // disable automatic clearing
+  ACE_EN       // enable automatic clearing
+};
+
+enum enum_S12AD_ADCER_ADRFMT { // AD Register ForMaT
+  ADRFMT_FLRIGHT,      // flush-right format
+  ADRFMT_FLLEFT        // flush-left format
+};
+
+enum enum_S12AD_ADSTRGR_ADSTRS { // AD Start TRiGer Register
+  ADSTRS_ASYN,       // flush-right format
+  ADSTRS_TRG0AN_0,      // MTU0.TGRA & MTU0.TCNT
+  ADSTRS_TRG0BN_0,      // MTU0.TGRB & MTU0.TCNT
+  ADSTRS_TRGAN_0,       // MTUn.TGRA & MTUn.TCNT
+  ADSTRS_TRGAN_1,       // TPUn.TGRA
+  ADSTRS_TRG0EN_0,      // MTU0.TGRE & MTU0.TCNT
+  ADSTRS_TRG0FN_0,      // MTU0.TGRF & MTU0.TCNT
+  ADSTRS_TRG04ABN_0,    // MTU4.TADCORA & MTU4.TCNT
+                        // MTU4.TADCORB & MTU4.TCNT
+  ADSTRS_TRG04ABN_1,    // TPU0.TGRA
+  ADSTRS_TMTRG0AN_0,    // TMR0.TCORA & TMR0.TCNT
+  ADSTRS_TMTRG0AN_1     // TMR2.TCORA & TMR2.TCNT
+};
+
+enum enum_S12AD_ADEXICR_TSSAD {
+  // Temperature Sensor Output A/D Converted Value Addition Mode Select
+  TSSAD_DE,        // addition mode
+  TSSAD_ADD        // disable
+};
+
+enum enum_S12AD_ADEXICR_OCSAD {
+  // A/D Internal Reference Voltage A/D Converted Value Addition Mode Select
+  OCSAD_DE,        // addition mode
+  OCSAD_ADD        // disable
+};
+
+enum enum_S12AD_ADEXICR_TSS {
+  // Temperature Sensor Output A/D Conversion Select
+  TSS_DE,         // addition mode
+  TSS_EN          // disable
+};
+
+enum enum_S12AD_ADEXICR_OCS {
+  // A/D Internal Reference Voltage A/D Conversion Select
+  OCS_DE,         // addition mode
+  OCS_EN          // disable
+};
 
 // bit meanings of MTU2a
 enum enum_MTU34_TCR_TPSC {
