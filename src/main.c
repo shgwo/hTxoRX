@@ -24,14 +24,15 @@
 // ---------------------------------------------- Includes
 #include "rx63n/iodefine.h"
 #include "rx63n/iodefine_enum.h"
-//#include "rx63n/interrupt_handlers.h"
+#include "rx63n/interrupt_handlers.h"
 
 //#include "rx63n/PortUtils.h"
+#include "ppm_gen.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
 #define sleep(X) for(j = 0; j < X*1000; j++) {}
-#define steps(X) for(j = 0; j < X; j++) { }
+#define steps(X) for(j = 0; j < X; j++) { __asm("nop"); }
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
@@ -55,30 +56,36 @@ int main( void )
   SysCoreUnlock();
 
   // select CLK src & dividing
-  SYSTEM.SCKCR.BIT.PCKB   = XCK_DIV_2;    // XTAL:12MHz 8x/1 -> 96MHz / 2 -> 48MHz
-  SYSTEM.SCKCR.BIT.PCKA   = XCK_DIV_1;    // XTAL:12MHz 8x/1 -> 96MHz
-  SYSTEM.SCKCR.BIT.BCK    = XCK_DIV_4;    // XTAL:12MHz 8x/1 -> 96MHz / 4 -> 24MHz
-  SYSTEM.SCKCR.BIT.ICK    = XCK_DIV_1;    // XTAL:12MHz 8x/1 -> 96MHz
-  SYSTEM.SCKCR.BIT.FCK    = XCK_DIV_2;    // XTAL:12MHz 8x/1 -> 96MHz / 2 -> 48MHz
-  SYSTEM.SCKCR.BIT.PSTOP0 = PSTOP0_EN;
-  SYSTEM.SCKCR.BIT.PSTOP1 = PSTOP0_DE;
-  SYSTEM.SCKCR2.BIT.IEBCK = IECK_DIV_4;   // XTAL:12MHz 8x/1 -> 96MHz / 4 -> 24MHz
-  SYSTEM.SCKCR2.BIT.UCK   = UCK_DIV_4;    // XTAL:12MHz 8x/1 -> 96MHz / 3 -> 24MHz (??)
+  SYSTEM.SCKCR.BIT.PCKB   = XCK_DIV_4;    // XTAL:12MHz 16x/4 -> 48MHz
+  SYSTEM.SCKCR.BIT.PCKA   = XCK_DIV_2;    // XTAL:12MHz 16x/2 -> 96MHz
+  SYSTEM.SCKCR.BIT.BCK    = XCK_DIV_8;    // XTAL:12MHz 16x/8 -> 24MHz
+  SYSTEM.SCKCR.BIT.ICK    = XCK_DIV_2;    // XTAL:12MHz 16x/2 -> 96MHz
+  SYSTEM.SCKCR.BIT.FCK    = XCK_DIV_4;    // XTAL:12MHz 16x/4 -> 48MHz
+  SYSTEM.SCKCR.BIT.PSTOP0 = PSTOP0_EN;    // PSTOP0_[EN / DE] SDCLK  
+  SYSTEM.SCKCR.BIT.PSTOP1 = PSTOP0_DE;    // PSTOP1_[EN / DE] BusCLK
+  SYSTEM.SCKCR2.BIT.IEBCK = IECK_DIV_8;   // XTAL:12MHz 16x/8 -> 24MHz
+  SYSTEM.SCKCR2.BIT.UCK   = UCK_DIV_4;    // XTAL:12MHz 16x/4 -> 48MHz
   
   SYSTEM.MOSCCR.BIT.MOSTP = MOSTP_RUN;   // MOSC Running
   SYSTEM.SCKCR3.BIT.CKSEL = CKSEL_MOSC;  // CKSEL_[LOCO / HOCO / MOSC / SOSC / PLL]
   steps(10);                             // ensure that PLL is stable
   SYSTEM.PLLCR2.BIT.PLLEN = PLLEN_STOP;  // PLLEN
   SYSTEM.PLLCR.BIT.PLIDIV = PLIDIV_1;    // PLLDIV_[1 / 2 / 4]
-  SYSTEM.PLLCR.BIT.STC    = STC_8X;      // STC_[8 / 10 / 12 / 16 / 20 / 24 / 25 / 50]X
-                                         // XTAL:12MHz, 8x -> 96MHz (104M - 200MHz)
+                                         // XTAL:12MHz, 16x/1 -> 192MHz
+  SYSTEM.PLLCR.BIT.STC    = STC_16X;     // STC_[8 / 10 / 12 / 16 / 20 / 24 / 25 / 50]X
+                                         // XTAL:12MHz, 16x -> 192MHz (104M - 200MHz)
   SYSTEM.PLLCR2.BIT.PLLEN = PLLEN_RUN;   // PLLEN
   steps(10);                             // ensure > 5 cycles run to be stable a PLL
   SYSTEM.SCKCR3.BIT.CKSEL = CKSEL_PLL;   // CKSEL_[LOCO / HOCO / MOSC / SOSC / PLL]
 
+  //steps(10);                             // ensure > 5 cycles run to be stable a PLL
+  //SYSTEM.SCKCR3.BIT.CKSEL = CKSEL_MOSC;  // CKSEL_[LOCO / HOCO / MOSC / SOSC / PLL]
+  
   // Module stop setting
   //  MSTP(TMR0) = MSTP_STOP;  // MSTP_RUN / MSTP_STOP
   //  MSTP(TMR2) = MSTP_STOP;
+  MSTP(TPU3)  = MSTP_RUN;
+  MSTP(S12AD) = MSTP_RUN;
   
   // distribute CLK to all module
   //SYSTEM.MSTPCRA.LONG = 0x00000000;
@@ -89,7 +96,7 @@ int main( void )
   // **********
   
   // Enable NMI irq
-  ICU.NMIER.BIT.NMIEN = 0;
+  //ICU.NMIER.BIT.NMIEN = 0;
   
   // Close mission critical register
   SysCoreLock();
@@ -281,6 +288,9 @@ int main( void )
     if( PORTA.PIDR.BIT.B7 == 0 ){
       /* Disp LED according to AN0 */
       unsigned char test = MPC.P21PFS.BIT.PSEL;
+      test = SYSTEM.SCKCR3.BIT.CKSEL;
+      test = ( S12AD.ADDR0 >> 12 );
+      
       //      test = MPC.PWPR.BYTE;
       /* test = TPU3.TGRA; */
       /* test = S12AD.ADDR0; */
@@ -288,7 +298,8 @@ int main( void )
       DataDisp( test );
     }
     else{
-      PORTA.PODR.BYTE = i++ & (1 << 0 | 1 << 1 | 1 << 2 | 1 << 6);
+      //PORTA.PODR.BYTE = i++ & (1 << 0 | 1 << 1 | 1 << 2 | 1 << 6);
+      PORTA.PODR.BYTE = i++ & ( 1 << 6 );
       /* Set GPIOs according to i */
       //PORTA.PODR.BYTE = i++ & (1 << 0 | 1 << 1 | 1 << 2 | 1 << 6);
     }
@@ -342,10 +353,11 @@ void SysCoreLock( void ){
 }
 
 void SysCoreUnlock( void ){
-  SYSTEM.PRCR.BIT.PRKEY = PRKEY_UNLOCK;
-  SYSTEM.PRCR.BIT.PRC0  = PRCn_UNLOCK;
-  SYSTEM.PRCR.BIT.PRC1  = PRCn_UNLOCK;
-  SYSTEM.PRCR.BIT.PRC3  = PRCn_UNLOCK;
+  //SYSTEM.PRCR.BIT.PRKEY = PRKEY_UNLOCK;
+  //SYSTEM.PRCR.BIT.PRC0  = PRCn_UNLOCK;
+  //SYSTEM.PRCR.BIT.PRC1  = PRCn_UNLOCK;
+  //SYSTEM.PRCR.BIT.PRC3  = PRCn_UNLOCK;
+  SYSTEM.PRCR.WORD = 0xA503;
 }
 
 //

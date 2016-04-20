@@ -13,8 +13,8 @@ enum enum_PRCR_PRCn {
 };
 
 enum enum_PRCR_PRCR {
-  PRKEY_LOCK,       // register lock
-  PRKEY_UNLOCK=0xA5 // register unlock
+  PRKEY_LOCK,         // register lock
+  PRKEY_UNLOCK=181 // register unlock
 };
 
 
