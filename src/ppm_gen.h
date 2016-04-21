@@ -3,6 +3,14 @@
 
 #include "rx63n/typedefine.h"
 
-extern int ms2cnt( double, uint16_t );
+struct st_ppm_pref {
+  // fclk w/ prescaler
+
+  // resolution of ADC
+
+  // coefficient of convert
+};
+
+extern uint16_t ms2cnt( double, uint32_t );
 
 #endif

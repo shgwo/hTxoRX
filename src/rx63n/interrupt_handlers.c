@@ -322,7 +322,9 @@ void INT_Excep_TPU1_TGI1B(void){ }
 void INT_Excep_TPU2_TGI2B(void){ }
 
 // TPU3 TGI3A
-void INT_Excep_TPU3_TGI3A(void){ }
+void INT_Excep_TPU3_TGI3A(void){
+  TPU3.TGRC            = TPU3.TGRC - 1
+}
 
 // TPU3 TGI3B
 void INT_Excep_TPU3_TGI3B(void){ }

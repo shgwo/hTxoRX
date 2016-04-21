@@ -1,7 +1,7 @@
 // -------------------------------------------------------
 // ------------------------------------------------ Notice
-//  This program is distributed to the world under
-//  LICENSE of the GPL.
+//  This program is distributed or redistributed to
+//  the world under License of the GPL.
 //
 // -------------------------------------------------------
 // ------------------------------------------------- Info.
@@ -22,12 +22,12 @@
 
 // -------------------------------------------------------
 // ---------------------------------------------- Includes
-#include "rx63n/iodefine.h"
-#include "rx63n/iodefine_enum.h"
-#include "rx63n/interrupt_handlers.h"
+#include "iodefine.h"
+#include "iodefine_enum.h"
+#include "interrupt_handlers.h"
 
 //#include "rx63n/PortUtils.h"
-#include "ppm_gen.h"
+//#include "ppm_gen.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
@@ -186,7 +186,7 @@ int main( void )
   TPU3.TIORH.BIT.IOB   = TPU_IOX_DE;          // disable
   TPU3.TIORL.BIT.IOC   = TPU_IOX_DE;          // disable
   TPU3.TIORL.BIT.IOD   = TPU_IOX_DE;          // disable
-  TPU3.TIER.BIT.TGIEA  = TGIEX_DE;            // IRQ enable (temp de)
+  TPU3.TIER.BIT.TGIEA  = TGIEX_EN;            // IRQ enable (temp DE)
   TPU3.TIER.BIT.TTGE   = TTGE_EN;             // enable: ADC start
   TPUA.TSTR.BIT.CST3   = CSTn_STOP;           // stop: TPU3
   
@@ -207,7 +207,7 @@ int main( void )
                                              // (PCLK 48MHz -> 48/2 steps, 1u/2 = 500ns)
   S12AD.ADSSTR23.BIT.SST2  = 0xFF;           // A/D Sampling State Register 23 (Temp sensor)
   S12AD.ADCSR.BIT.CKS     = CKS_PCLK_2;      // CKS_PCLK_8 / CKS_PCLK_4 / CKS_PCLK_2 / CKS_PCLK
-  S12AD.ADCSR.BIT.ADIE    = ADIE_DE;         // ADIE_DE / ADIE_EN
+  S12AD.ADCSR.BIT.ADIE    = ADIE_EN;         // ADIE_DE / ADIE_EN
   S12AD.ADCSR.BIT.EXTRG   = EXTRG_SYNC;      // EXTRG_SYNC / EXTRG_ASYN
   S12AD.ADCSR.BIT.TRGE    = TRGE_EN;         // TRGE_EN / TRGE_DE
   S12AD.ADCSR.BIT.ADCS    = ADCS_SINGLE;     // ADCS_SINGLE / ADCS_CONT
@@ -227,6 +227,9 @@ int main( void )
   TPU3.TGRC            = 1800;     // 300u * 6.0M = 1800 ()
   //IR(TPU3, TGI3A) = 1;
   //IR(S12AD, S12ADI0) = 1;
+  IEN( TPU3, TGI3A ) = 1;
+  IPR( TPU3, TGI3A ) = 1;
+  __builtin_rx_setpsw( 'I' );
   TPUA.TSTR.BIT.CST3   = CSTn_RUN;   // start to run timer pulse
 	  
   //
