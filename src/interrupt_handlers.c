@@ -19,7 +19,7 @@
 
 #include "interrupt_handlers.h"
 #include "iodefine.h"
-#include "usb_hal.h"
+//#include "usb_hal.h"
 
 void InterruptHandler_USBHost() __attribute__((weak));
 void InterruptHandler_USBHost() {}
@@ -97,11 +97,11 @@ void INT_Excep_USB0_USBI0(void){
 
     if(USB0.SYSCFG.BIT.DCFM==0)
     {/* Function controller is selected */
-        USBHALInterruptHandler();
+      //        USBHALInterruptHandler();
     }
     else if(USB0.SYSCFG.BIT.DCFM==1)
     {/* Host controller is selected */
-        InterruptHandler_USBHost();
+      //        InterruptHandler_USBHost();
     }
 }
 
@@ -251,7 +251,11 @@ void INT_Excep_RTC_PRD(void){ }
 void INT_Excep_AD_ADI0(void){ }
 
 // S12AD S12ADI0
-void INT_Excep_S12AD_S12ADI0(void){ }
+void INT_Excep_S12AD_S12ADI0(void){
+  TPU3.TGRC            = S12AD.ADDR0;
+  TPU3.TGRA            = S12AD.ADDR0;
+  PORTJ.PODR.BIT.B3 = !PORTJ.PODR.BIT.B3;
+}
 
 // ICU GROUP0
 void INT_Excep_ICU_GROUP0(void){ }
@@ -323,7 +327,8 @@ void INT_Excep_TPU2_TGI2B(void){ }
 
 // TPU3 TGI3A
 void INT_Excep_TPU3_TGI3A(void){
-  TPU3.TGRC            = TPU3.TGRC - 1
+  TPU3.TGRC            = 10;
+  PORTJ.PODR.BIT.B3 = !PORTJ.PODR.BIT.B3;
 }
 
 // TPU3 TGI3B

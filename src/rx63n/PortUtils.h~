@@ -1,0 +1,5 @@
+#ifndef __PORTUTILS_H__
+#define __PORTUTILS_H__
+
+#define <rx63n/iodefine.h>
+#define <rx63n/iodefine_enum.h>
