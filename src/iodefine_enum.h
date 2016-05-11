@@ -192,11 +192,11 @@ enum enum_P25PFS_PSEL {
 enum enum_P32PFS_PSEL {
   P32PFS_HIZ,
   P32PFS_MTIOC0C,
-  P32PFS_TIOCC0,
-  P32PFS_TMO3,
+  P32PFS_TIOCC0=3,
+  P32PFS_TMO3=5,
   P32PFS_PO10,
   P32PFS_RTCOUT,
-  P32PFS_TXD6,
+  P32PFS_TXD6=10,
   P32PFS_TXD0,
   P32PFS_CTX0=16,        //b10000
   P32PFS_USB0_VBUSEN=19, //b10011
@@ -272,35 +272,46 @@ enum enum_TMR_TCSR_ADTE {
 
 
 // bit meanings of MTU2a
-enum enum_MTU34_TCR_TPSC {
-  TPSC_PCLK,      // PCLK
-  TPSC_PCLK_4,    // PCLK/4
-  TPSC_PCLK_16,   // PCLK/16
-  TPSC_PCLK_64,   // PCLK/64
-  TPSC_PCLK_256,  // PCLK/256
-  TPSC_PCLK_1024, // PCLK/1024
-  TPSC_MTCLKA,    // MTCLKA
-  TPSC_MTCLKB     // MTCLKB
+enum enum_MTU0_TCR_MTU0_TPSC {
+  MTU0_TPSC_PCLK,      // PCLK
+  MTU0_TPSC_PCLK_4,    // PCLK/4
+  MTU0_TPSC_PCLK_16,   // PCLK/16
+  MTU0_TPSC_PCLK_64,   // PCLK/64
+  MTU0_TPSC_MTCLKA,    // MTCLKA
+  MTU0_TPSC_MTCLKB,    // MTCLKB
+  MTU0_TPSC_MTCLKC,    // MTCLKC
+  MTU0_TPSC_MTCLKD     // MTCLKD
 };
 
-enum enum_MTU34_TCR_CKEG {
+enum enum_MTU34_TCR_MTU34_TPSC {
+  MTU34_TPSC_PCLK,      // PCLK
+  MTU34_TPSC_PCLK_4,    // PCLK/4
+  MTU34_TPSC_PCLK_16,   // PCLK/16
+  MTU34_TPSC_PCLK_64,   // PCLK/64
+  MTU34_TPSC_PCLK_256,  // PCLK/256
+  MTU34_TPSC_PCLK_1024, // PCLK/1024
+  MTU34_TPSC_MTCLKA,    // MTCLKA
+  MTU34_TPSC_MTCLKB     // MTCLKB
+};
+
+enum enum_MTU_TCR_CKEG {
   CKEG_PEDGE,     // Pos edge
   CKEG_NEDGE,     // Neg edge
   CKEG_EDGE       // Both edge
 };
 
-enum enum_MTU34_TCR_CCLR {
+enum enum_MTU_TCR_CCLR {
   CCLR_OFF,      // OFF
   CCLR_TGRA,     // by TGRA
   CCLR_TGRB,     // by TGRB
   CCLR_SYNC,     // by other synced ch
-  CCLR_OFF_,     // OFF
-  CCLR_TGRC,     // by TGRC
-  CCLR_TGRD,     // by TGRD
-  CCLR_SYNC_,    // by other synced ch
+  CCLR_OFF_,     // OFF      (for MTU0,3,4)
+  CCLR_TGRC,     // by TGRC  (for MTU0,3,4)
+  CCLR_TGRD,     // by TGRD  (for MTU0,3,4)
+  CCLR_SYNC_,    // by other synced ch  (for MTU0,3,4)
 };
 
-enum enum_MTU34_TMDR_MD {
+enum enum_MTU_TMDR_MD {
   TMDR_MD_NORMAL,      // OFF
   TMDR_MD_XXX0,     // prohibit
   TMDR_MD_PWM1,     // PWM1 mode
@@ -318,10 +329,48 @@ enum enum_MTU34_TMDR_MD {
   TMDR_MD_CPWM3,     // Transfer in both
 };
 
-enum enum_MTU34_TMDR_BFx {
+enum enum_MTU_TMDR_BFx {
   TMDR_BFx_NORM,     // unbuffered func (TGR A&C / B&D / MTU0. E&F)
   TMDR_BFx_BUFF,     // buffered func
 };
+
+enum enum_MTU_TIOR_IOX {
+  // TGR[A:D] Control
+  MTU_IOX_DE,      // disabled
+  MTU_IOX_OLCL,    // Output: init Low / cmatch Low
+  MTU_IOX_OLCH,    // Output: init Low / cmatch High
+  MTU_IOX_OLCT,    // Output: init Low / cmatch toggle
+  MTU_IOX_DE_,     // disabled
+  MTU_IOX_OHCL,    // Output: init High / cmatch Low
+  MTU_IOX_OHCH,    // Output: init High / cmatch High
+  MTU_IOX_OHCT,    // Output: init High / cmatch toggle
+  MTU_IOX_IPEDGE,  // Input(IOA): TIOCAn pin capture at pos edge
+                   // Input(IOB): TIOCBn / TIOCAn (by ISELB) pin capture at pos edge
+                   // Input(IOC): TIOCCn pin capture at pos edge
+                   // Input(IOD): TIOCCn / TIOCDn (by ISELD) pin capture at pos edge
+  MTU_IOX_INEDGE,  // Input: TIOCAn pin capture at neg edge
+  MTU_IOX_IEDGE,   // Input: TIOCAn pin capture at both edge
+  MTU_IOX_IEDGE_,  // same as above
+  MTU_IOX_TCNT     // Input: MTU0 -> MTU1.TCNT
+                   //        MTU1 -> MTU0.TGRx
+                   //        MTU2 -> None
+                   //        MTU3 -> None
+                   //        MTU4 -> None
+                   //        MTU5 -> None
+};
+
+enum enum_MTU_TRWER_RWE {
+  // Read/Write Enable
+  TRWER_RWE_DE,   // disabled
+  TRWER_RWE_EN    // enabled
+};
+
+enum enum_MTU_TOER_OEny {
+  // Master Enable MTIOC[3,4][B,C]
+  OEny_DE,        // disabled
+  OEny_EN         // enabled
+};
+
 
 
 // bit meanings of TPUa
@@ -331,7 +380,6 @@ enum enum_TPU06_TCR_TPSC {
   TPU06_TPSC_PCLK_4,     // PCLK/4
   TPU06_TPSC_PCLK_16,    // PCLK/16
   TPU06_TPSC_PCLK_64,    // PCLK/64
-  
   TPU06_TPSC_EXCLK_AE,   // External clock
                          // (TPU0:TCLKA pin / TPU6:TCLKE pin)
   TPU06_TPSC_EXCLK_BF,   // External clock
@@ -415,24 +463,24 @@ enum enum_TPU_TMDR_ICSELD {
   TPU_ICSELD_TIOCCn     // TIOCCn pin
 };
 
-enum enum_TPU39_TIOR_IOX {
+enum enum_TIOR_IOX {
   // TGRA Control
-  TPU_IOX_DE,      // disabled
-  TPU_IOX_OLCL,    // Output: init Low / cmatch Low
-  TPU_IOX_OLCH,    // Output: init Low / cmatch High
-  TPU_IOX_OLCT,    // Output: init Low / cmatch toggle
-  TPU_IOX_DE_,     // disabled
-  TPU_IOX_OHCL,    // Output: init High / cmatch Low
-  TPU_IOX_OHCH,    // Output: init High / cmatch High
-  TPU_IOX_OHCT,    // Output: init High / cmatch toggle
-  TPU_IOX_IPEDGE,  // Input(IOA): TIOCAn pin capture at pos edge
+  IOX_DE,      // disabled
+  IOX_OLCL,    // Output: init Low / cmatch Low
+  IOX_OLCH,    // Output: init Low / cmatch High
+  IOX_OLCT,    // Output: init Low / cmatch toggle
+  IOX_DE_,     // disabled
+  IOX_OHCL,    // Output: init High / cmatch Low
+  IOX_OHCH,    // Output: init High / cmatch High
+  IOX_OHCT,    // Output: init High / cmatch toggle
+  IOX_IPEDGE,  // Input(IOA): TIOCAn pin capture at pos edge
                    // Input(IOB): TIOCBn / TIOCAn (by ISELB) pin capture at pos edge
                    // Input(IOC): TIOCCn pin capture at pos edge
                    // Input(IOD): TIOCCn / TIOCDn (by ISELD) pin capture at pos edge
-  TPU_IOX_INEDGE,  // Input: TIOCAn pin capture at neg edge
-  TPU_IOX_IEDGE,   // Input: TIOCAn pin capture at both edge
-  TPU_IOX_IEDGE_,  // same as above
-  TPU_IOX_TCNT     // Input: TPU0 -> TPU1.TCNT / TPU6 -> TPU7.TCNT
+  IOX_INEDGE,  // Input: TIOCAn pin capture at neg edge
+  IOX_IEDGE,   // Input: TIOCAn pin capture at both edge
+  IOX_IEDGE_,  // same as above
+  IOX_TCNT     // Input: TPU0 -> TPU1.TCNT / TPU6 -> TPU7.TCNT
                    //        TPU1 -> TPU0.TCNT / TPU7 -> TPU6.TCNT
                    //        TPU2 -> None / TPU8 -> None
                    //        TPU3 -> TPU4.TCNT / TPU9 -> TPU10.TCNT

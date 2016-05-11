@@ -56,7 +56,7 @@ void SysCoreUnlock( void );
 void SysCoreLock( void );
 void MPCUnlock( void );
 void MPCLock( void );
-
+void MTU34Unlock( void );
 // -------------------------------------------------------
 // ------------------------------------------ Main routine  
 int main( void )
@@ -104,11 +104,11 @@ int main( void )
   // LED
   MSTP(TPU0)  = MSTP_RUN;
   MSTP(TPU4)  = MSTP_RUN;
+  MSTP(MTU4)  = MSTP_RUN;
   // for PPM
   MSTP(TPU3)  = MSTP_RUN;
   // for gimbal
   MSTP(S12AD) = MSTP_RUN;
-  
   
   // distribute CLK to all module
   //SYSTEM.MSTPCRA.LONG = 0x00000000;
@@ -143,7 +143,7 @@ int main( void )
 
   // IO Port setting
   MPCUnlock();
-  // PA0-2,6 -> LED indicator
+  // PA0-2,6 -> Onboard LED indicator
   PORTA.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTA.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTA.PMR.BIT.B2 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
@@ -229,7 +229,7 @@ int main( void )
   PORT4.PMR.BIT.B3 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B5 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   
-  // P21 -> PPM output (3.3V)
+  // P21 -> PPM output (3.3V pulse out)
   /* future func => PortConfMPC( PDR_OUT, 0, PMR_FUNC, P21PFS_TIOCA3 ); */
   PORT2.PODR.BIT.B1  = 1;
   PORT2.PMR.BIT.B1   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
@@ -266,11 +266,11 @@ int main( void )
   PORT3.PDR.BIT.B2 = PDR_OUT;        // PDR_IN / PDR_OUT
   
   /* // P24 -> LED gradation PWM output (Red) */
-  /* PORT2.PODR.BIT.B4  = 1; */
-  /* PORT2.PMR.BIT.B4   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC */
-  /* PORT2.PDR.BIT.B4   = PDR_OUT;          // PDR_IN / PDR_OUT */
-  /* MPC.P24PFS.BIT.PSEL  = P24PFS_MTIOC4A; */
-  /* PORT2.PMR.BIT.B4     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC */
+  PORT2.PODR.BIT.B4  = 1;
+  PORT2.PMR.BIT.B4   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
+  PORT2.PDR.BIT.B4   = PDR_OUT;          // PDR_IN / PDR_OUT
+  MPC.P24PFS.BIT.PSEL  = P24PFS_MTIOC4A;
+  PORT2.PMR.BIT.B4     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   /* // P25 -> LED gradation PWM output (Blue) */
   PORT2.PODR.BIT.B5  = 1;
   PORT2.PMR.BIT.B5   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
@@ -308,16 +308,36 @@ int main( void )
   TPU3.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // buffer operation
   TPU3.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
   TPU3.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU3.TIORH.BIT.IOA   = TPU_IOX_OHCT;        // TIOCAn
-  TPU3.TIORH.BIT.IOB   = TPU_IOX_DE;          // disable
-  TPU3.TIORL.BIT.IOC   = TPU_IOX_DE;          // disable
-  TPU3.TIORL.BIT.IOD   = TPU_IOX_DE;          // disable
+  TPU3.TIORH.BIT.IOA   = IOX_OHCT;        // TIOCAn
+  TPU3.TIORH.BIT.IOB   = IOX_DE;          // disable
+  TPU3.TIORL.BIT.IOC   = IOX_DE;          // disable
+  TPU3.TIORL.BIT.IOD   = IOX_DE;          // disable
   TPU3.TIER.BIT.TGIEA  = TGIEX_EN;            // IRQ enable (temp DE)
   TPU3.TIER.BIT.TTGE   = TTGE_EN;             // enable: ADC start
 
+  //MTU2a settings ( for gradational LED, Red )
+  MTU.TSTR.BIT.CST4    = CSTn_STOP;           // stop: MTU4
+  MTU34Unlock();
+  MTU.TOER.BIT.OE3B    = OEny_DE;          // OEny_[DE/EN] MTIOC3B
+  MTU.TOER.BIT.OE4A    = OEny_DE;          // OEny_[DE/EN] MTIOC4A
+  MTU.TOER.BIT.OE4B    = OEny_DE;          // OEny_[DE/EN] MTIOC4B
+  MTU.TOER.BIT.OE3D    = OEny_DE;          // OEny_[DE/EN] MTIOC3D
+  MTU.TOER.BIT.OE4C    = OEny_EN;          // OEny_[DE/EN] MTIOC4C
+  MTU.TOER.BIT.OE4D    = OEny_DE;          // OEny_[DE/EN] MTIOC4D
+  MTU4.TCR.BIT.TPSC    = MTU34_TPSC_PCLK;     // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
+  MTU4.TCR.BIT.CKEG    = CKEG_PEDGE;          // freq is same as above.
+  MTU4.TCR.BIT.CCLR    = CCLR_TGRC;           // TCNT cleared by TGRC
+  MTU4.TMDR.BIT.MD     = TMDR_MD_PWM1;         // PWM1 mode
+  MTU4.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
+  MTU4.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
+  MTU4.TIORH.BIT.IOA   = IOX_DE;           // disable
+  MTU4.TIORH.BIT.IOB   = IOX_DE;           // disable
+  MTU4.TIORL.BIT.IOC   = IOX_OLCL;          // MTIOCnC
+  MTU4.TIORL.BIT.IOD   = IOX_OLCH;          // MTIOCnC(PWM1)
+  
   //TPUa settings ( for gradational LED, Blue )
   TPUA.TSTR.BIT.CST4   = CSTn_STOP;           // stop: TPU04
-  TPU4.TCR.BIT.TPSC    = TPU39_TPSC_PCLK_1024;  // (12Mhz x 4) / 2^10 -> 2*2*3M/2^8 = ~21kHz
+  TPU4.TCR.BIT.TPSC    = TPU410_TPSC_PCLK;      // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
   TPU4.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // freq is same as above.
   TPU4.TCR.BIT.CCLR    = TPU_CCLR_TGRA;       // TCNT cleared by TGRA
   TPU4.TMDR.BIT.MD     = TPU_MD_PWM1;         // PWM1 mode
@@ -325,29 +345,29 @@ int main( void )
   TPU4.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
   TPU4.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
   TPU4.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU4.TIOR.BIT.IOA   = TPU_IOX_OLCL;        // TIOCAn
-  TPU4.TIOR.BIT.IOB   = TPU_IOX_OLCH;          // disable
+  TPU4.TIOR.BIT.IOA    = IOX_OLCL;        // TIOCAn
+  TPU4.TIOR.BIT.IOB    = IOX_OLCH;          // disable
   TPU4.TIER.BIT.TGIEA  = TGIEX_DE;            // IRQ enable (temp DE)
   TPU4.TIER.BIT.TTGE   = TTGE_DE;             // enable: ADC start
   
   //TPUa settings ( for gradational LED, Green )
   TPUA.TSTR.BIT.CST0   = CSTn_STOP;           // stop: TPU0
-  TPU0.TCR.BIT.TPSC    = TPU39_TPSC_PCLK_64;  // (12Mhz x 4) / 2^6 -> 2*2*3M/2^4 = ~1.5MHz
+  TPU0.TCR.BIT.TPSC    = TPU06_TPSC_PCLK;     // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
   TPU0.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // freq is same as above.
-  TPU0.TCR.BIT.CCLR    = TPU_CCLR_TGRC;       // TCNT cleared by TGRA
+  TPU0.TCR.BIT.CCLR    = TPU_CCLR_TGRC;       // TCNT cleared by TGRC
   TPU0.TMDR.BIT.MD     = TPU_MD_PWM1;         // PWM1 mode
   TPU0.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
   TPU0.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
   TPU0.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
   TPU0.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU0.TIORH.BIT.IOA   = TPU_IOX_DE;          // disable
-  TPU0.TIORH.BIT.IOB   = TPU_IOX_DE;          // disable
-  TPU0.TIORL.BIT.IOC   = TPU_IOX_OLCL;        // TIOCCn
-  TPU0.TIORL.BIT.IOD   = TPU_IOX_OLCH;          // disable
+  TPU0.TIORH.BIT.IOA   = IOX_DE;          // disable
+  TPU0.TIORH.BIT.IOB   = IOX_DE;          // disable
+  TPU0.TIORL.BIT.IOC   = IOX_OLCL;        // TIOCCn
+  TPU0.TIORL.BIT.IOD   = IOX_OLCH;          // disable
   TPU0.TIER.BIT.TGIEA  = TGIEX_DE;            // IRQ enable (temp DE)
   TPU0.TIER.BIT.TTGE   = TTGE_DE;             // enable: ADC start
-  
-  
+
+
   // ADC setting (to do: librarize setting process)
   S12AD.ADCSR.BIT.ADST  = ADST_STOP;   // ADST_START / ADST_STOP
   // scan ch setting ( ch select, addition )
@@ -358,7 +378,7 @@ int main( void )
   S12AD.ADADS0.WORD     = 0x202F;   // (b0010 0000 0010 1111) AN015 - AN000
   S12AD.ADADS1.WORD     = 0x0000;   // (b---- ---- ---0 0000) AN020 - AN016,
                                     //   |----> "-" is fixed value as 0
-    // config
+  // config
   S12AD.ADCER.BIT.ACE      = ACE_DE;          // ACE_DE / ACE_EN
   S12AD.ADCER.BIT.ADRFMT   = ADRFMT_FLLEFT;   // ADRFMT_FLRIGHT / ADRFMT_FLLEFT
   S12AD.ADSTRGR.BIT.ADSTRS = ADSTRS_TRGAN_1;  // TPUn.TGRA
@@ -374,10 +394,15 @@ int main( void )
   // [to do: ] need to add irq setting
 
   // LED gradation
+  MTU4.TGRC = 0xFFFF;
+  MTU4.TGRD = 0xFFFF;
   TPU4.TGRA = 0xFFFF;
-  TPU4.TGRB = 0x8010;
+  TPU4.TGRB = 0x1100;
+  TPU4.TGRB = 0x0000;
   TPU0.TGRC = 0xFFFF;
-  TPU0.TGRD = 0x8010;
+  TPU0.TGRD = 0xF010;
+  TPU0.TGRD = 0x0000;
+  MTU.TSTR.BIT.CST4   = CSTn_RUN;   // start to iluminite LED
   TPUA.TSTR.BIT.CST0   = CSTn_RUN;   // start to iluminite LED
   TPUA.TSTR.BIT.CST4   = CSTn_RUN;   // start to iluminate LED
   
@@ -423,7 +448,7 @@ int main( void )
   //
   //
   uint8_t op_md = OPMD_SAFE;
-  uint8_t  status = 0;
+  uint8_t  status = 0, stat_ppm=0;
   uint8_t  flag   = 0;
   uint16_t ppm_val[8], adc_val[21], adc_bat = 0;
   //unsigned char test = 0;
@@ -486,6 +511,7 @@ int main( void )
 	// end pulse
 	if( status >= 8 ){
 	  TPU3.TGRC = 37200;
+	  PORT3.PODR.BIT.B3 = ( (stat_ppm++ >> 5) & 0x01 );
 	  // debug
 	  PORTA.PODR.BIT.B0 = !PORTA.PODR.BIT.B0;
 	}
@@ -501,6 +527,12 @@ int main( void )
 
     // HMI routine
     // LED indication (for debug, printf)
+    if( ( stat_ppm >> 4 ) & 0x01 ){
+      MTU4.TGRD = adc_val[0];
+      TPU0.TGRD = adc_val[1];
+      TPU4.TGRB = adc_val[2];
+    }
+    
     if( PORTE.PIDR.BIT.B6 == 0 ){
       unsigned char test = ( S12AD.ADDR13 >> 12 );
       DataDisp( test );
@@ -519,74 +551,15 @@ int main( void )
     else{
       unsigned char test = ( S12AD.ADDR5 >> 12 );
       DataDisp( test );
+
       //PORTA.PODR.BYTE = i++ & (1 << 0 | 1 << 1 | 1 << 2 | 1 << 6);
       //PORTA.PODR.BYTE = i++ & ( 1 << 6 );
       /* Set GPIOs according to i */
       //PORTA.PODR.BYTE = i++ & (1 << 0 | 1 << 1 | 1 << 2 | 1 << 6);
     }
-
-    // test for circuit
-    if( PORTC.PIDR.BIT.B0 == 0 ){
-      PORT2.PODR.BIT.B2 = 1; // pink LED
-    }
-    else{
-      PORT2.PODR.BIT.B2 = 0;
-    }
-    
-    if( PORTC.PIDR.BIT.B1 == 0 ){
-      PORT2.PODR.BIT.B3 = 1; // violet LED
-    }
-    else{
-      PORT2.PODR.BIT.B3 = 0;
-    }
-
-    if( PORT5.PIDR.BIT.B0 == 0 ){
-      PORT3.PODR.BIT.B3 = 1;
-    }
-    else{
-      PORT3.PODR.BIT.B3 = 0;
-    }
-    // red
-    if( PORT5.PIDR.BIT.B1 == 0 ){
-      PORT2.PODR.BIT.B4 = 0;
-    }
-    else{
-      PORT2.PODR.BIT.B4 = 1;
-    }
-    // green
-    if( PORTE.PIDR.BIT.B0 == 0 ){
-      PORT2.PODR.BIT.B5 = 0;
-    }
-    else{
-      PORT2.PODR.BIT.B5 = 1;
-    }
-    // blue
-    if( PORTE.PIDR.BIT.B3 == 0 ){
-      PORT3.PODR.BIT.B2 = 1;
-    }
-    else{
-      PORT3.PODR.BIT.B2 = 0;
-    }
-    // RGB on
-    if( PORTE.PIDR.BIT.B4 == 0 ){
-      PORT2.PODR.BIT.B4 = 1;
-      PORT2.PODR.BIT.B5 = 0;
-      PORT3.PODR.BIT.B2 = 0;
-    }
-    else{
-    }
-    // RGB off
-    if( PORTE.PIDR.BIT.B5 == 0 ){
-      PORT2.PODR.BIT.B4 = 1;
-      PORT2.PODR.BIT.B5 = 0;
-      PORT3.PODR.BIT.B2 = 1;
-    }
-    else{
-    }
-        
     
     //        if( start_cnt == 10000000 ){ val_aux1 = 10; }
-    //        start_cnt++;
+    //            start_cnt++;
   }
   
 }
@@ -645,4 +618,10 @@ void MPCUnlock( void ){
 void MPCLock( void ){
   MPC.PWPR.BIT.PFSWE = PFSWE_LOCK;
   MPC.PWPR.BIT.B0WI  = B0WI_LOCK;
+}
+
+void MTU34Unlock( void ){
+  if( MTU.TRWER.BIT.RWE == 1 ){
+    MTU.TRWER.BIT.RWE == 0;
+  }
 }
