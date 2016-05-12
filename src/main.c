@@ -318,35 +318,36 @@ int main( void )
   //MTU2a settings ( for gradational LED, Red )
   MTU.TSTR.BIT.CST4    = CSTn_STOP;           // stop: MTU4
   MTU34Unlock();
-  MTU.TOER.BIT.OE3B    = OEny_DE;          // OEny_[DE/EN] MTIOC3B
-  MTU.TOER.BIT.OE4A    = OEny_DE;          // OEny_[DE/EN] MTIOC4A
-  MTU.TOER.BIT.OE4B    = OEny_DE;          // OEny_[DE/EN] MTIOC4B
-  MTU.TOER.BIT.OE3D    = OEny_DE;          // OEny_[DE/EN] MTIOC3D
-  MTU.TOER.BIT.OE4C    = OEny_EN;          // OEny_[DE/EN] MTIOC4C
-  MTU.TOER.BIT.OE4D    = OEny_DE;          // OEny_[DE/EN] MTIOC4D
+  //  MTU.TRWER.BIT.RWE    = TRWER_RWE_EN;
   MTU4.TCR.BIT.TPSC    = MTU34_TPSC_PCLK;     // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
   MTU4.TCR.BIT.CKEG    = CKEG_PEDGE;          // freq is same as above.
-  MTU4.TCR.BIT.CCLR    = CCLR_TGRC;           // TCNT cleared by TGRC
+  MTU4.TCR.BIT.CCLR    = CCLR_TGRB;           // TCNT cleared by TGRB
   MTU4.TMDR.BIT.MD     = TMDR_MD_PWM1;         // PWM1 mode
   MTU4.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
   MTU4.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
-  MTU4.TIORH.BIT.IOA   = IOX_DE;           // disable
-  MTU4.TIORH.BIT.IOB   = IOX_DE;           // disable
-  MTU4.TIORL.BIT.IOC   = IOX_OLCL;          // MTIOCnC
-  MTU4.TIORL.BIT.IOD   = IOX_OLCH;          // MTIOCnC(PWM1)
+  MTU4.TIORH.BIT.IOA   = IOX_OLCH;           // MTIOCnA
+  MTU4.TIORH.BIT.IOB   = IOX_OLCL;           // MTIOCnA(PWM1)
+  MTU4.TIORL.BIT.IOC   = IOX_DE;          // disable
+  MTU4.TIORL.BIT.IOD   = IOX_DE;          // disable
+  MTU.TOER.BIT.OE3B    = OEny_DE;          // OEny_[DE/EN] MTIOC3B
+  MTU.TOER.BIT.OE4A    = OEny_EN;          // OEny_[DE/EN] MTIOC4A
+  MTU.TOER.BIT.OE4B    = OEny_DE;          // OEny_[DE/EN] MTIOC4B
+  MTU.TOER.BIT.OE3D    = OEny_DE;          // OEny_[DE/EN] MTIOC3D
+  MTU.TOER.BIT.OE4C    = OEny_DE;          // OEny_[DE/EN] MTIOC4C
+  MTU.TOER.BIT.OE4D    = OEny_DE;          // OEny_[DE/EN] MTIOC4D
   
   //TPUa settings ( for gradational LED, Blue )
   TPUA.TSTR.BIT.CST4   = CSTn_STOP;           // stop: TPU04
   TPU4.TCR.BIT.TPSC    = TPU410_TPSC_PCLK;      // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
   TPU4.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // freq is same as above.
-  TPU4.TCR.BIT.CCLR    = TPU_CCLR_TGRA;       // TCNT cleared by TGRA
+  TPU4.TCR.BIT.CCLR    = TPU_CCLR_TGRB;       // TCNT cleared by TGRA
   TPU4.TMDR.BIT.MD     = TPU_MD_PWM1;         // PWM1 mode
   TPU4.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
   TPU4.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
   TPU4.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
   TPU4.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU4.TIOR.BIT.IOA    = IOX_OLCL;        // TIOCAn
-  TPU4.TIOR.BIT.IOB    = IOX_OLCH;          // disable
+  TPU4.TIOR.BIT.IOA    = IOX_OLCH;        // TIOCAn
+  TPU4.TIOR.BIT.IOB    = IOX_OLCL;          // disable
   TPU4.TIER.BIT.TGIEA  = TGIEX_DE;            // IRQ enable (temp DE)
   TPU4.TIER.BIT.TTGE   = TTGE_DE;             // enable: ADC start
   
@@ -394,11 +395,11 @@ int main( void )
   // [to do: ] need to add irq setting
 
   // LED gradation
-  MTU4.TGRC = 0xFFFF;
-  MTU4.TGRD = 0xFFFF;
+  MTU4.TGRA = 0xFFFF;
+  MTU4.TGRB = 0xFFFF;
   TPU4.TGRA = 0xFFFF;
   TPU4.TGRB = 0x1100;
-  TPU4.TGRB = 0x0000;
+  TPU4.TGRB = 0xFFFF;
   TPU0.TGRC = 0xFFFF;
   TPU0.TGRD = 0xF010;
   TPU0.TGRD = 0x0000;
@@ -467,16 +468,19 @@ int main( void )
     
     // get ADC val & arrange for PPM ch
     // future func => PPMGenInputSelector()
-    adc_val[0] = (S12AD.ADDR2 >> (2 + 2) ) + (182 * 6); // Roll
+    //adc_val[0] = (S12AD.ADDR2 >> (2 + 2) ) + (182 * 6); // Roll (old)
+    adc_val[0] = (uint16_t)( 1.0*(S12AD.ADDR2 >> (2 + 1) ) - (132 * 6) ); // Roll
     //adc_val[1] = (S12AD.ADDR3 >> (2 + 2) ) + (162 * 6); // Pitch (old NINV)
-    adc_val[1] = (~S12AD.ADDR3 >> (2 + 2) ) +(833 * 6); // Pitch
+    //adc_val[1] = (~S12AD.ADDR3 >> (2 + 2) ) +(833 * 6); // Pitch (old)
+    adc_val[1] = (uint16_t)( 1.0*(~S12AD.ADDR3 >> (2 + 1) ) + (1168 * 6) ); // Pitch
     //adc_val[2] = (S12AD.ADDR0 >> (2 + 2) ) - (114 * 6); // Throttle (old)
-    adc_val[2] = (uint16_t)(1.0*(S12AD.ADDR0 >> 3 ) - (224 * 6) ); // Throttle (971 - 1932)
+    adc_val[2] = (uint16_t)( 1.0*(S12AD.ADDR0 >> (2 + 1) ) - (224 * 6) ); // Throttle (971 - 1932)
     //adc_val[3] = (S12AD.ADDR1 >> (2 + 2) ) + (209 * 6); // Yaw (NINV)
-    adc_val[3] = (~S12AD.ADDR1 >> (2 + 2) ) + (783 * 6); // Yaw (INV)
+    //adc_val[3] = (~S12AD.ADDR1 >> (2 + 2) ) + (783 * 6); // Yaw (INV old)
+    adc_val[3] = (uint16_t)( 1.0*(~S12AD.ADDR1 >> (2 + 1) ) + (1069 * 6) ); // Yaw (INV)
     adc_val[4] = 0;
     adc_val[5] = 0;
-    adc_val[6] = (S12AD.ADDR5 >> (2 + 2) ); // AUX3
+    adc_val[6] = (uint16_t)( 1.0*(S12AD.ADDR5 >> (2 + 1)) ); // AUX3
     adc_val[7] = 0;
 
     adc_bat = (S12AD.ADDR8 >> (2 + 0) );
@@ -485,15 +489,12 @@ int main( void )
     // future func => PPMGenOutputFilter() <- LUT-base conversion
     
     // battery check 
-
+    
 
     // Motors disarming check
     adc_val[4] = (PORTE.PIDR.BIT.B7 ? 0 : 2049);
     if( PORTE.PIDR.BIT.B7 ){
-      adc_val[0] = 0; // Roll
-      adc_val[1] = 0; // Pitch
-      adc_val[2] = 0; // Yaw
-      adc_val[3] = 0; // Throttle
+      adc_val[2] = 0; // Throttle
     }
 
     // PPM generation core
@@ -527,10 +528,12 @@ int main( void )
 
     // HMI routine
     // LED indication (for debug, printf)
-    if( ( stat_ppm >> 4 ) & 0x01 ){
-      MTU4.TGRD = adc_val[0];
-      TPU0.TGRD = adc_val[1];
-      TPU4.TGRB = adc_val[2];
+    if( ( stat_ppm >> 5 ) & 0x01 ){
+      //      MTU4.TGRB = adc_val[0];
+      MTU4.TGRA = adc_val[0]; // Red
+      //      TPU0.TGRD = adc_val[1];
+      //      TPU4.TGRB = adc_val[2];
+      TPU4.TGRA = adc_val[2]; //
     }
     
     if( PORTE.PIDR.BIT.B6 == 0 ){
@@ -621,7 +624,7 @@ void MPCLock( void ){
 }
 
 void MTU34Unlock( void ){
-  if( MTU.TRWER.BIT.RWE == 1 ){
-    MTU.TRWER.BIT.RWE == 0;
+  if( MTU.TRWER.BIT.RWE == TRWER_RWE_DE ){
+    MTU.TRWER.BIT.RWE = TRWER_RWE_EN;
   }
 }
