@@ -39,13 +39,13 @@ enum enum_PPMADJ{
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
-struct st_PPMAdj {
+typedef struct st_PPMAdj {
   char     name[10];
   uint8_t  ch_adc;
   uint8_t  invert;
   uint16_t offset;
   double   gain;
-};
+} st_PPMAdj;
 
 
 struct st_ppm_pref {

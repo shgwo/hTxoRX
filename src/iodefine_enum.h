@@ -212,6 +212,28 @@ enum enum_PJ3PFS_PSEL {
 
 
 // bit meanings of TMR
+enum enum_CMT_CMCR_CKS {
+  // Clock Select
+  CMT_CKS_PCLK_8,      // PCLK/8
+  CMT_CKS_PCLK_32,     // PCLK/32
+  CMT_CKS_PCLK_128,    // PCLK/128
+  CMT_CKS_PCLK_512     // PCLK/512
+};
+
+enum enum_CMT_CMCR_CMIE {
+  // Compare Match Interrupt Enable
+  CMIE_DE,      // Interruput disable
+  CMIE_EN       // Interruput disable
+};
+
+enum enum_CMT_CMSTRn {
+  // Counter Start n
+  CMSTRn_STOP,    // count stop
+  CMSTRn_RUN      // count start
+};
+
+
+// bit meanings of TMR
 enum enum_TMR_TCR_CCLR {
   // Counter Clear
   CCLR_NOCLR,     // Clearing is disabled
