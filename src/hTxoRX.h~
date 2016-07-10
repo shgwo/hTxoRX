@@ -20,47 +20,49 @@
 //    2016.04.16  add codes to operate TPU & ADC w/ synccronization
 //                (interrupt codes are not included yet..) 
 //
-#ifndef __PPM_GEN_H__
-#define __PPM_GEN_H__
+#ifndef __HTXORX_H__
+#define __HTXORX_H__
 
 // -------------------------------------------------------
 // ---------------------------------------------- Includes
 #include "iodefine.h"
-#include "iodefine_enum.h"
 #include "typedefine.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
-#define NCH_PPM  8   // number of CH on PPM signal
-
-enum enum_PPMADJ{
-  PPMADJ_NOINV,
-  PPMADJ_INV
+// state difinition for main operation
+enum enum_AppMode {
+  OPMD_INIT,
+  OPMD_DIAG,
+  OPMD_SAFE,
+  OPMD_RUN_INIT,
+  OPMD_RUN,
+  OPMD_FAIL,
+  OPMD_UNKNOWN
 };
+enum enum_AppModeLog {
+  OPMD_LOG_OFF,
+  OPMD_LOG_ON
+};
+enum enum_AppModeBat {
+  OPMD_BAT_LOW,
+  OPMD_BAT_MID,
+  OPMD_BAT_FULL
+};
+
+enum enum_UARTApp {
+  UART_MSP,
+  UART_TELEMETRY,
+  UART_N_APP
+};
+
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
-typedef struct st_PPMAdj {
-  char     name[10];
-  uint8_t  ch_adc;
-  uint8_t  invert;
-  uint16_t offset;
-  double   gain;
-} st_PPMAdj;
 
-
-struct st_ppm_pref {
-  // fclk w/ prescaler
-
-  // resolution of ADC
-
-  // coefficient of convert
-};
 
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
-extern int PPMGenAdjInit( struct st_PPMAdj* , char*, uint8_t, enum enum_PPMADJ, uint16_t, double );
-extern uint16_t ms2cnt( double, uint32_t );
 
 #endif

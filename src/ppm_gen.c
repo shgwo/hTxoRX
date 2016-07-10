@@ -22,6 +22,38 @@ int PPMGenAdjInit( struct st_PPMAdj *ppm_adj , char *name, uint8_t ch_adc, enum 
 }
 
 // initialize unit convert constant
+double PPMGenInit_RX63N( double f_clk, uint8_t n_prs ){
+  // P21 -> PPM output (3.3V pulse out)
+  /* future func => PortConfMPC( PDR_OUT, 0, PMR_FUNC, P21PFS_TIOCA3 ); */
+  PORT2.PODR.BIT.B1  = 1;
+  PORT2.PMR.BIT.B1   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
+  PORT2.PDR.BIT.B1   = PDR_OUT;          // PDR_IN / PDR_OUT
+  MPC.P21PFS.BIT.PSEL  = P21PFS_TIOCA3;
+  PORT2.PMR.BIT.B1     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+  
+  /* future func => PortConfMPC( PDR_OUT, 0, PMR_FUNC, P21PFS_TIOCA3 ); */
+  // TPUa setting (for PPM)
+  TPUA.TSTR.BIT.CST3   = CSTn_STOP;           // stop: TPU3
+  TPU3.TCR.BIT.TPSC    = TPU39_TPSC_PCLK_16;  // (12Mhz x 4) / 2^4 -> 12M/2^2 = 3.0 MHz
+  TPU3.TCR.BIT.CKEG    = TPU_CKEG_EDGE;  // (12Mhz x 4) / 2^3 -> 12M/2   = 6.0 MHz
+  //TPU3.TCR.BIT.TPSC    = TPU39_TPSC_PCLK_4;   // (12Mhz x 4) / 2^4 -> 12M/2^2 = 3.0 MHz (high-reso test)
+  //TPU3.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // (12Mhz x 4) / 2^3 -> 12M/2   = 6.0 MHz (high-reso test)
+  TPU3.TCR.BIT.CCLR    = TPU_CCLR_TGRA;       // TCNT cleared by TGRA
+  TPU3.TMDR.BIT.MD     = TPU_MD_NORM;         // normal mode
+  TPU3.TMDR.BIT.BFA    = TMDR_BFx_BUFF;        // buffer operation
+  TPU3.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // buffer operation
+  TPU3.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
+  TPU3.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
+  TPU3.TIORH.BIT.IOA   = IOX_OHCT;        // TIOCAn
+  TPU3.TIORH.BIT.IOB   = IOX_DE;          // disable
+  TPU3.TIORL.BIT.IOC   = IOX_DE;          // disable
+  TPU3.TIORL.BIT.IOD   = IOX_DE;          // disable
+  TPU3.TIER.BIT.TGIEA  = TGIEX_EN;            // IRQ enable (temp DE)
+  TPU3.TIER.BIT.TTGE   = TTGE_EN;             // enable: ADC start
+
+  return( 0 );
+}
+
 double PPMGenInit( double f_clk, uint8_t n_prs ){
   double k_us2tcnt;
 

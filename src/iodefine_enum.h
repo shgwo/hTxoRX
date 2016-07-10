@@ -151,6 +151,54 @@ enum enum_PmnPFS_ASEL {
   ASEL_ON
 };
 
+enum enum_P12PFS_PSEL {
+  P12PFS_HIZ,
+  P12PFS_MTIC5U,
+  P12PFS_TMCI1=5,        //00101b
+  P12PFS_RXD2=10,        //01010b
+  P12PFS_SCL0=15         //01111b
+};
+
+enum enum_P13PFS_PSEL {
+  P13PFS_HIZ,
+  P13PFS_MTIOC0B,
+  P13PFS_TIOCA5=3,       //00011b
+  P13PFS_TMO3=5,         //00101b
+  P13PFS_PO13,
+  P13PFS_ADTRG=9,        //01001b
+  P13PFS_TXD2,           //01010b
+  P13PFS_SDA0=15         //01111b
+};
+
+enum enum_P14PFS_PSEL {
+  P14PFS_HIZ,
+  P14PFS_MTIOC3A,
+  P14PFS_MTCLKA,         //00010b
+  P14PFS_TIOCB5,         //00011b
+  P14PFS_TCLKA,          //00100b
+  P14PFS_TMRI2,          //00101b
+  P14PFS_PO15,           //00110b
+  P14PFS_CTS=11,         //01011b
+  P14PFS_CTX1=16,        //10000b
+  P14PFS_USB0_DPUPE,     //10001b
+  P14PFS_USB0_OVRCURA    //10010b
+};
+
+enum enum_P15PFS_PSEL {
+  P15PFS_HIZ,
+  P15PFS_MTIOC0B,        //00001b
+  P15PFS_MTCLKB,         //00010b
+  P15PFS_TIOCB2,         //00011b
+  P15PFS_TCLKB,          //00100b
+  P15PFS_TMCI2,          //00101b
+  P15PFS_PO13,           //00110b
+  P15PFS_RXD1=10,        //01010b
+  P15PFS_SCK3,           //01011b
+  P14PFS_CRX1DS=16,      //10000b
+  P15PFS_USB1_DPUPE,     //10001b
+  P15PFS_PIXD0=28        //11100b
+};
+
 enum enum_P21PFS_PSEL {
   P21PFS_HIZ,
   P21PFS_MTIOC1B,
@@ -203,11 +251,52 @@ enum enum_P32PFS_PSEL {
   P32PFS_VSYNC=28        //b11100
 };
 
+enum enum_PC2PFS_PSEL {
+  PC2PFS_HIZ,
+  PC2PFS_MTIOC4B,
+  PC2PFS_TCLKA=3,        //b00011
+  PC2PFS_PO21=6,         //b00110
+  PC2PFS_RXD5=10,        //b01010
+  PC2PFS_SSLA3=13,       //b01101
+  PC2PFS_IERXD=16,       //b10000
+  PC2PFS_ET_RX_DV        //b10001
+};
+
+enum enum_PC3PFS_PSEL {
+  PC3PFS_HIZ,
+  PC3PFS_MTIOC4D,
+  PC3PFS_TCLKB=3,        //b00011
+  PC3PFS_PO24=6,         //b00110
+  PC3PFS_TXD5=10,        //b01010
+  PC3PFS_IETXD=16,       //b10000
+  PC3PFS_ET_TX_ER        //b10001
+};
+
 enum enum_PJ3PFS_PSEL {
   PJ3PFS_HIZ,
   PJ3PFS_MTIOC3C,
   PJ3PFS_CSI6=10,//1010b
   PJ3PFS_CSI0=11//1011b
+};
+
+enum enum_PE1PFS_PSEL {
+  PE1PFS_HIZ,
+  PE1PFS_MTIOC4C,      //0001b
+  PE1PFS_TIOCD9=3,     //0011b
+  PE1PFS_PO18=6,       //0110b
+  PE1PFS_TXD12=12,     //1100b
+  PE1PFS_SSLB2,        //1101b
+  PE1PFS_RSPCKB        //1110b
+};
+
+enum enum_PE2PFS_PSEL {
+  PE2PFS_HIZ,
+  PE2PFS_MTIOC4A,      //0001b
+  PE2PFS_TIOCA9=3,     //0011b
+  PE2PFS_PO23=6,       //0110b
+  PE2PFS_RXD12=12,     //1100b
+  PE2PFS_SSLB3,        //1101b
+  PE2PFS_MOSIB        //1110b
 };
 
 
@@ -440,6 +529,21 @@ enum enum_TPU410_TCR_TPSC {
                           // (TPU4:TPU5 OV/UV flag / TPU10:TPU11 OV/UV flag
 };
 
+enum enum_TPU511_TCR_TPSC {
+  // Timer Prescaler Select
+  TPU511_TPSC_PCLK,       // PCLK
+  TPU511_TPSC_PCLK_4,     // PCLK/4
+  TPU511_TPSC_PCLK_16,    // PCLK/16
+  TPU511_TPSC_PCLK_64,    // PCLK/64
+  TPU511_TPSC_EXCLK_AE,   // External clock
+                          // (TPU5:TCLKA pin / TPU11:TCLKE pin)
+  TPU511_TPSC_EXCLK_CG,   // External clock
+                          // (TPU0:TCLKC pin / TPU6:TCLKG pin)
+  TPU511_TPSC_PCLK_256,   // PCLK/256
+  TPU511_TPSC_EXCLK_DH    // External clock
+                          // (TPU0:TCLKD pin / TPU6:TCLKH pin)
+};
+
 
 
 enum enum_TPU_TCR_CKEG {
@@ -548,6 +652,186 @@ enum enum_TPU_TSTR_SYNCn {
   SYNCn_IND,      // operates independently
   SYNCn_SYNC      // operates w/ synchronization
 };
+
+enum enum_SCI_SMR_CKS {
+  // Clock Select
+  SCI_CKS_PCLK,     // PCLK
+  SCI_CKS_PCLK_4,   // PCLK/4
+  SCI_CKS_PCLK_16,  // PCLK/16
+  SCI_CKS_PCLK_64   // PCLK/64
+};
+
+enum enum_SCI_SMR_MP {
+  // Multi-Processor Mode
+  SCI_MP_DE,    // disabled
+  SCI_MP_EN     // enabled
+};
+
+enum enum_SCI_SMR_STOP {
+  // Stop Bit Length
+  SCI_STOP_1,  // 1 stop bit
+  SCI_STOP_2   // 2 stop bit
+};
+
+enum enum_SCI_SMR_PM {
+  // Parity Mode
+  SCI_PM_EVEN,  // Select even parity
+  SCI_PM_ODD    // Select odd parity
+};
+
+enum enum_SCI_SMR_PE {
+  // Parity Enable
+  SCI_PE_DE,  // Parity bit addition is not performed
+  SCI_PE_EN   // The parity bit is added(tx)/checked(rx)
+};
+
+enum enum_SCI_SMR_CHR {
+  // Character Length
+  SCI_CHR_8,  // Selects 8 bits as the data length
+  SCI_CHR_7   // Selects 7 bits as the data length
+};
+
+enum enum_SCI_SMR_CM {
+  // Communications Mode
+  SCI_CM_ASYNC,  // Asynchronous mode
+  SCI_CM_SYNC    // Clock synchronous mode
+};
+
+enum enum_SCI_SCR_CKE {
+  // Clock Enable
+  SCI_CKE_OCHPIO,  // On-chip baud rate generator (SCK as I/O)
+  SCI_CKE_OCHPCK,  // On-chip baud rate generator (SCK as SCK)
+  SCI_CKE_EXTCLK   // External clock or TMR
+};
+
+enum enum_SCI_SCR_TEIE {
+  // Transmit End Interrupt Enable
+  SCI_TEIE_DE,  // A TEI interrupt request is disabled
+  SCI_TEIE_EN  // A TEI interrupt request is enabled
+};
+
+enum enum_SCI_SCR_MPIE {
+  // Multi-Processor Interrupt Enable
+  // (Valid in asynchronous mode when SMR.MP = 1)
+  SCI_MPIE_NORM,  // Normal reception
+  SCI_MPIE_MP     // 
+};
+
+enum enum_SCI_SCR_RE {
+  // Receive Enable
+  SCI_RE_DE, // Serial reception is disabled
+  SCI_RE_EN  // Serial reception is enabled
+};
+
+enum enum_SCI_SCR_TE {
+  // Transmit Enable
+  SCI_TE_DE, // Serial transmission is disabled
+  SCI_TE_EN  // Serial transmission is enabled
+};
+
+enum enum_SCI_SCR_RIE {
+  // Receive Interrupt Enable
+  SCI_RIE_DE, // RXI and ERI interrupt requests are disabled
+  SCI_RIE_EN  // RXI and ERI interrupt requests are enabled
+};
+
+enum enum_SCI_SCR_TIE {
+  // Receive Interrupt Enable
+  SCI_TIE_DE, // A TXI interrupt request is disabled
+  SCI_TIE_EN  // A TXI interrupt request is enabled
+};
+
+enum enum_SCI_SSR_MPBT {
+  // Multi-Processor Bit Transfer
+  // Sets the multi-processor bit for adding to the transmission frame
+  SCI_MPBT_DAT, // Data transmission cycles
+  SCI_MPBT_ID   // ID transmission cycles
+};
+
+enum enum_SCI_SSR_MPB {
+  // Multi-Processor
+  // Value of the multi-processor bit in the reception frame
+  SCI_MPB_DAT, // Data transmission cycles
+  SCI_MPB_ID   // ID transmission cycles
+};
+
+enum enum_SCI_SSR_TEND {
+  // Transmit End Flag
+  SCI_TEND_BUSY, // A character is being transmitted.
+  SCI_TEND_DONE   // Character transfer has been completed.
+};
+
+enum enum_SCI_SSR_PER {
+  // Parity Error Flag
+  SCI_PER_OK,   // No parity error occurred
+  SCI_PER_ERR   // A parity error has occurred
+};
+
+enum enum_SCI_SSR_FER {
+  // Framing Error Flag
+  SCI_FER_OK,   // No framing error occurred
+  SCI_FER_ERR   // A framing error has occurred
+};
+
+enum enum_SCI_SSR_ORER {
+  // Overrun Error Flag
+  SCI_ORER_OK,   // No overrun error occurred
+  SCI_ORER_ERR   // A overrun error has occurred
+};
+
+enum enum_SCI_SCMR_SMIF {
+  // Smart Card Interface Mode Select
+  SCI_SMIF_SCIF,    // Serial communications interface mode
+  SCI_SMIF_SMIF     // Smart card interface mode
+};
+
+enum enum_SCI_SCMR_SINV {
+  // Transmitted/Received Data Invert
+  SCI_SINV_NORM,    // TDR contents are transmitted as they are.
+  SCI_SINV_INV      // TDR contents are inverted before being transmitted.
+                     // Receive data is stored in inverted form in RDR.
+};
+
+enum enum_SCI_SCMR_SDIR {
+  // Transmitted/Received Data Transfer Direction
+  SCI_SDIR_LSB,    // Transfer with LSB-first
+  SCI_SMIF_MSB     // Transfer with MSB-first
+};
+
+enum enum_SCI_SEMR_ACS0 {
+  // Asynchronous Mode Clock Source Select
+  SCI_ACS0_EXCLK,   // External clock input
+  SCI_ACS0_TMRCLK   // TMR clock input (valid only for SCI5, SCI6, and SCI12)
+                     // SCI5 Unit 0 TMO0, TMO1
+                     // SCI6 Unit 1 TMO2, TMO3
+                     // SCI12 Unit 0 TMO0, TMO1
+};
+
+enum enum_SCI_SEMR_ABCS {
+  // Asynchronous Mode Base Clock Select
+  SCI_ABCS_16CLK,   // Selects 16 base clock cycles for 1-bit period
+  SCI_ABCS_8CLK     // Selects 8 base clock cycles for 1-bit period
+};
+
+enum enum_SCI_SIMR1_IICM {
+  // Simple I2C Mode Select
+  SCI_IICM_SCIF,   // Serial interface mode
+  SCI_IICM_I2C,    // Simple I2C mode
+  SCI_IICM_SMIF    // Smart card interface mode
+};
+
+enum enum_SCI_SPMR_CKPOL {
+  // Clock Polarity Select
+  SCI_CKPOL_NORM,   // Clock polarity is not inverted.
+  SCI_CKPOL_INV     // Clock polarity is inverted.
+};
+
+enum enum_SCI_SPMR_CKPH {
+  // Clock Phase Select
+  SCI_CKPH_NORM,   // Clock is not delayed.
+  SCI_CKPH_DLY     // Clock is delayed.
+};
+
 
 
 // bit meanings of S12ADa

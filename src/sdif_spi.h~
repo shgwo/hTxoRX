@@ -1,0 +1,107 @@
+// -------------------------------------------------------
+// ------------------------------------------------ Notice
+//  This program is distributed or redistributed to
+//  the world under the License of MIT.
+//
+//  
+//
+// -------------------------------------------------------
+// ------------------------------------------------- Info.
+//
+//  Description:   Relative utilities for PPM generation
+//
+//  Author:        S.Nakamura (shgwo)
+//
+//  Ver.:          0.1
+//  last updated : 2016.04.18
+//
+//  history:
+//    2016.04.08  create for RX63N( GR-SAKURA ) base-system
+//    2016.04.16  add codes to operate TPU & ADC w/ synccronization
+//                (interrupt codes are not included yet..) 
+//
+#ifndef __HMI_H__
+#define __HMI_H__
+
+// -------------------------------------------------------
+// ---------------------------------------------- Includes
+#include "iodefine.h"
+#include "iodefine_enum.h"
+#include "typedefine.h"
+#include "hTxoRX.h"
+
+// -------------------------------------------------------
+// ----------------------------------------------- Defines
+// label definition for HMI input source
+enum enum_HMI_SW {
+  HMI_SW_ARM_KEY,
+  HMI_SW_ARM_LOG,
+  HMI_SW_ROT,
+  HMI_SW_L1_KEY,
+  HMI_SW_L1_LCK,
+  HMI_SW_L2_F,
+  HMI_SW_L2_B,
+  HMI_SW_R1_KEY,
+  HMI_SW_R1_LCK,
+  HMI_SW_R2_F,
+  HMI_SW_R2_B,
+  HMI_N_SW
+};
+enum enum_HMI_GMBL {
+  HMI_GMBL_LV,
+  HMI_GMBL_LH,
+  HMI_GMBL_RV,
+  HMI_GMBL_RH,
+  HMI_N_GMBL
+};
+enum enum_HMI_TRM {
+  HMI_TRM_ROT,
+  HMI_TRM_VOL,
+  HMI_N_TRM
+};
+enum enum_HMI_LED {
+  HMI_LED_POW,
+  HMI_LED_LOG,
+  HMI_LED_NORM,
+  HMI_N_LED
+};
+enum enum_HMI_LED_RGB {
+  HMI_LED_R,
+  HMI_LED_G,
+  HMI_LED_B,
+  HMI_N_LED_RGB
+};
+
+// -------------------------------------------------------
+// ----------------------------------------------- Structs
+typedef struct st_HMI {
+  // for inputs
+  uint8_t  sw_state[HMI_N_SW];
+  uint16_t sw_cnt [HMI_N_SW];
+  //  uint16_t sw_ncnt [HMI_N_SW];
+  uint16_t gmbl [HMI_N_GMBL];
+  uint16_t trm [HMI_N_TRM];
+  // for output
+  uint8_t  LED_state[HMI_N_LED];
+  uint8_t  ppm_cnt;
+  uint16_t LED_RGB[HMI_N_LED_RGB];
+  // for utility
+  uint16_t cnt_sw;
+  uint16_t cnt_led;
+  uint16_t cnt_ppm;
+  uint16_t cnt_bat;
+} st_HMI;
+
+
+// -------------------------------------------------------
+// -------------------------------- Proto-type declaration
+extern uint8_t HMISWInit( struct st_HMI* );
+extern uint8_t HMIScanSW ( struct st_HMI* );
+extern uint8_t HMISWState ( struct st_HMI*, enum enum_HMI_SW );
+extern uint8_t HMILongPress ( struct st_HMI*, enum enum_HMI_SW, uint16_t );
+extern uint8_t HMILEDPPMAct( st_HMI*, enum enum_AppModeLog, uint8_t);
+extern uint8_t HMILEDBatLow( st_HMI *, enum enum_AppModeBat, uint8_t );
+extern uint8_t HMILEDSetRGB( st_HMI*, enum enum_AppMode );
+extern uint8_t HMILEDFlash( st_HMI*, enum enum_AppMode, enum enum_AppModeBat, enum enum_AppModeLog );
+
+#endif

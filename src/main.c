@@ -28,116 +28,29 @@
 #include "interrupt_handlers.h"
 #include "typedefine.h"
 //#include "rx63n/PortUtils.h"
+#include "sysutil_RX63N.h"
+#include "hTxoRX.h"
 #include "ppm_gen.h"
+#include "HMI.h"
+#include "serial.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
 #define sleep(X) for(j = 0; j < X*1000; j++) {}
-#define steps(X) for(j = 0; j < X; j++) { __asm("nop"); }
+
 
 #define NCH_ADC 21   // number of AD channel on the HW
-// state difinition for main operation
-enum enum_AppMode {
-  OPMD_INIT,
-  OPMD_DIAG,
-  OPMD_SAFE,
-  OPMD_RUN_INIT,
-  OPMD_RUN,
-  OPMD_FAIL,
-  OPMD_UNKNOWN
-};
-enum enum_AppModeLog {
-  OPMD_LOG_OFF,
-  OPMD_LOG_ON
-};
-enum enum_AppModeBat {
-  OPMD_BAT_LOW,
-  OPMD_BAT_MID,
-  OPMD_BAT_FULL
-};
 
-// label definition for HMI input source
-enum enum_HMI_SW {
-  HMI_SW_ARM_KEY,
-  HMI_SW_ARM_LOG,
-  HMI_SW_ROT,
-  HMI_SW_L1_KEY,
-  HMI_SW_L1_LCK,
-  HMI_SW_L2_F,
-  HMI_SW_L2_B,
-  HMI_SW_R1_KEY,
-  HMI_SW_R1_LCK,
-  HMI_SW_R2_F,
-  HMI_SW_R2_B,
-  HMI_N_SW
-};
-enum enum_HMI_GMBL {
-  HMI_GMBL_LV,
-  HMI_GMBL_LH,
-  HMI_GMBL_RV,
-  HMI_GMBL_RH,
-  HMI_N_GMBL
-};
-enum enum_HMI_TRM {
-  HMI_TRM_ROT,
-  HMI_TRM_VOL,
-  HMI_N_TRM
-};
-enum enum_HMI_LED {
-  HMI_LED_POW,
-  HMI_LED_LOG,
-  HMI_LED_NORM,
-  HMI_N_LED
-};
-enum enum_HMI_LED_RGB {
-  HMI_LED_R,
-  HMI_LED_G,
-  HMI_LED_B,
-  HMI_N_LED_RGB
-};
-  
 // -------------------------------------------------------
 // -------------------------------------- global variables
 st_PPMAdj ppm_adj[NCH_PPM];
-struct st_PPMAdj ppm_adj[NCH_PPM];
-
-typedef struct st_HMI {
-  // for inputs
-  uint8_t  sw_state[HMI_N_SW];
-  uint16_t sw_cnt [HMI_N_SW];
-  //  uint16_t sw_ncnt [HMI_N_SW];
-  uint16_t gmbl [HMI_N_GMBL];
-  uint16_t trm [HMI_N_TRM];
-  // for output
-  uint8_t  LED_state[HMI_N_LED];
-  uint8_t  ppm_cnt;
-  uint16_t LED_RGB[HMI_N_LED_RGB];
-  // for utility
-  uint16_t cnt_sw;
-  uint16_t cnt_led;
-  uint16_t cnt_ppm;
-  uint16_t cnt_bat;
-} st_HMI;
-
-st_HMI hmi;
+st_HMI    hmi;
+st_Serial ser[UART_N_APP];
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
-uint8_t HMISWInit( struct st_HMI* );
-uint8_t HMIScanSW ( struct st_HMI* );
-uint8_t HMISWState ( struct st_HMI*, enum enum_HMI_SW );
-uint8_t HMILongPress ( struct st_HMI*, enum enum_HMI_SW, uint16_t );
-uint8_t HMILEDPPMAct( st_HMI*, enum enum_AppModeLog, uint8_t);
-uint8_t HMILEDBatLow( st_HMI *, enum enum_AppModeBat, uint8_t );
-uint8_t HMILEDSetRGB( st_HMI*, enum enum_AppMode );
-uint8_t HMILEDFlash( st_HMI*, enum enum_AppMode, enum enum_AppModeBat, enum enum_AppModeLog );
-
 void DataDisp( unsigned char );
-void SysCoreUnlock( void );
-void SysCoreLock( void );
-void MPCUnlock( void );
-void MPCLock( void );
-void MTU34Unlock( void );
+
 // -------------------------------------------------------
 // ------------------------------------------ Main routine  
 int main( void )
@@ -152,51 +65,14 @@ int main( void )
   SysCoreUnlock();
 
   // select CLK src & dividing
-  SYSTEM.SCKCR.BIT.PCKB   = XCK_DIV_4;    // XTAL:12MHz 16x/4 -> 48MHz
-  SYSTEM.SCKCR.BIT.PCKA   = XCK_DIV_2;    // XTAL:12MHz 16x/2 -> 96MHz
-  SYSTEM.SCKCR.BIT.BCK    = XCK_DIV_8;    // XTAL:12MHz 16x/8 -> 24MHz
-  SYSTEM.SCKCR.BIT.ICK    = XCK_DIV_2;    // XTAL:12MHz 16x/2 -> 96MHz
-  SYSTEM.SCKCR.BIT.FCK    = XCK_DIV_4;    // XTAL:12MHz 16x/4 -> 48MHz
-  SYSTEM.SCKCR.BIT.PSTOP0 = PSTOP0_EN;    // PSTOP0_[EN / DE] SDCLK  
-  SYSTEM.SCKCR.BIT.PSTOP1 = PSTOP0_DE;    // PSTOP1_[EN / DE] BusCLK
-  SYSTEM.SCKCR2.BIT.IEBCK = IECK_DIV_8;   // XTAL:12MHz 16x/8 -> 24MHz
-  SYSTEM.SCKCR2.BIT.UCK   = UCK_DIV_4;    // XTAL:12MHz 16x/4 -> 48MHz
-  
-  SYSTEM.MOSCCR.BIT.MOSTP = MOSTP_RUN;   // MOSC Running
-  SYSTEM.SCKCR3.BIT.CKSEL = CKSEL_MOSC;  // CKSEL_[LOCO / HOCO / MOSC / SOSC / PLL]
-  steps(10);                             // ensure that PLL is stable
-  SYSTEM.PLLCR2.BIT.PLLEN = PLLEN_STOP;  // PLLEN
-  SYSTEM.PLLCR.BIT.PLIDIV = PLIDIV_1;    // PLLDIV_[1 / 2 / 4]
-                                         // XTAL:12MHz, 16x/1 -> 192MHz
-  SYSTEM.PLLCR.BIT.STC    = STC_16X;     // STC_[8 / 10 / 12 / 16 / 20 / 24 / 25 / 50]X
-                                         // XTAL:12MHz, 16x -> 192MHz (104M - 200MHz)
-  SYSTEM.PLLCR2.BIT.PLLEN = PLLEN_RUN;   // PLLEN
-  steps(10);                             // ensure > 5 cycles run to be stable a PLL
-  SYSTEM.SCKCR3.BIT.CKSEL = CKSEL_PLL;   // CKSEL_[LOCO / HOCO / MOSC / SOSC / PLL]
-
-  //steps(10);                             // ensure > 5 cycles run to be stable a PLL
-  //SYSTEM.SCKCR3.BIT.CKSEL = CKSEL_MOSC;  // CKSEL_[LOCO / HOCO / MOSC / SOSC / PLL]
-  
-  // Module stop setting
-  //  MSTP(TMR0) = MSTP_STOP;  // MSTP_RUN / MSTP_STOP
-  //  MSTP(TMR2) = MSTP_STOP;
-  // for interface clock
-  MSTP(CMT0)  = MSTP_RUN;
-  MSTP(CMT1)  = MSTP_RUN;
-  // LED
-  //MSTP(TPU0)  = MSTP_RUN;
-  //MSTP(TPU4)  = MSTP_RUN;
-  MSTP(MTU0)  = MSTP_RUN;
-  MSTP(MTU4)  = MSTP_RUN;
-  // for PPM
-  MSTP(TPU3)  = MSTP_RUN;
-  // for gimbal
-  MSTP(S12AD) = MSTP_RUN;
-  
+  SysClkInit();
   // distribute CLK to all module
   //SYSTEM.MSTPCRA.LONG = 0x00000000;
   //SYSTEM.MSTPCRB.LONG = 0x00000000;
   //SYSTEM.MSTPCRC.LONG = 0x00000000;
+
+  // select using module
+  SysMdlStopInit();
 
   // (nothing to do:) LVD setting
   // **********
@@ -225,7 +101,7 @@ int main( void )
   //   PORTJ [PJ3, PJ5]                  (x(*2))
 
   // IO Port setting
-  MPCUnlock();
+  SysMPCUnlock();
   // PA0-2,6 -> Onboard LED indicator
   PORTA.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTA.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
@@ -238,90 +114,15 @@ int main( void )
   // PA7 -> Onboard SW input
   PORTA.PMR.BIT.B7 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTA.PDR.BIT.B7 = PDR_IN;         // PDR_IN / PDR_OUT
-  // PE[0:1] -> Arm SW input
-  // ( PE6: SW [ ARM ] (ON),  ON-OFF-(ON) )
-  //   PE7: SW [ ARM ] ON,    ON-OFF-(ON) )
-  PORTE.PCR.BIT.B6 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PCR.BIT.B7 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PDR.BIT.B6 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTE.PDR.BIT.B7 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTE.PMR.BIT.B6 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTE.PMR.BIT.B7 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  // PC[0:1], P5[0:1] -> reserved SW input
-  // ( P52: SW #0 [ LeftLeft ]  (ON) on rotary encoder
-  //   P50: SW #1 [ Left ]      ON
-  //   P51: SW #1 [ Left ]      (ON)
-  //   PC0: SW #2 [ Left mid ]  tail   
-  //   PC0: SW #2 [ Left mid ]  head   
-  //   PE0: SW #3 [ Right mid ] 
-  //   PE3: SW #3 [ Right mid ] 
-  //   PE4: SW #4 [ Right ] (ON)
-  //   PE5: SW $5 [ Right ] ON       )
-  PORT5.PCR.BIT.B0 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORT5.PCR.BIT.B1 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORT5.PCR.BIT.B2 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTC.PCR.BIT.B0 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTC.PCR.BIT.B1 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PCR.BIT.B0 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PCR.BIT.B3 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PCR.BIT.B4 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PCR.BIT.B5 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORT5.PDR.BIT.B0 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORT5.PDR.BIT.B1 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORT5.PDR.BIT.B2 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTC.PDR.BIT.B0 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTC.PDR.BIT.B1 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTE.PDR.BIT.B0 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTE.PDR.BIT.B3 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTE.PDR.BIT.B4 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTE.PDR.BIT.B5 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORT5.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORT5.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORT5.PMR.BIT.B2 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTC.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTC.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTE.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTE.PMR.BIT.B3 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTE.PMR.BIT.B4 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTE.PMR.BIT.B5 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
 
-  // P22,23,P33 -> LED status indicator ( LED extention board )
-  // PC[0:1], P5[0:1] -> reserved SW input
-  // ( P22: status Pink
-  //   P23: status Violet
-  //   P33: status Blue )
-  PORT2.PODR.BIT.B2  = 1;
-  PORT2.PODR.BIT.B3  = 1;
-  PORT3.PODR.BIT.B3  = 1;
-  PORT2.PMR.BIT.B2 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORT2.PMR.BIT.B3 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORT3.PMR.BIT.B3 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORT2.PDR.BIT.B2 = PDR_OUT;        // PDR_IN / PDR_OUT
-  PORT2.PDR.BIT.B3 = PDR_OUT;        // PDR_IN / PDR_OUT
-  PORT3.PDR.BIT.B3 = PDR_OUT;        // PDR_IN / PDR_OUT  
-  // P24, 25, P32 -> LED gradational status indicator ( LED extention board )
-  /* // P24 -> LED gradation PWM output (Red) */
-  PORT2.PODR.BIT.B4  = 1;
-  PORT2.PMR.BIT.B4   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
-  PORT2.PDR.BIT.B4   = PDR_OUT;          // PDR_IN / PDR_OUT
-  MPC.P24PFS.BIT.PSEL  = P24PFS_MTIOC4A;
-  PORT2.PMR.BIT.B4     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
-  /* // P25 -> LED gradation PWM output (Blue) */
-  PORT2.PODR.BIT.B5  = 1;
-  PORT2.PMR.BIT.B5   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
-  PORT2.PDR.BIT.B5   = PDR_OUT;          // PDR_IN / PDR_OUT
-  MPC.P25PFS.BIT.PSEL  = P25PFS_TIOCA4;
-  MPC.P25PFS.BIT.PSEL  = P25PFS_MTIOC4C;
-  PORT2.PMR.BIT.B5     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
-  // P32 -> LED gradation PWM output (Green)
-  PORT3.PODR.BIT.B2  = 1;
-  PORT3.PMR.BIT.B2   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
-  PORT3.PDR.BIT.B2   = PDR_OUT;          // PDR_IN / PDR_OUT
-  MPC.P32PFS.BIT.PSEL  = P32PFS_TIOCC0;
-  MPC.P32PFS.BIT.PSEL  = P32PFS_MTIOC0C;
-  PORT3.PMR.BIT.B2     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+  // LED extention board
+  HMILEDExtInit( &hmi );
+  // Piezo-sounder extention board
+  HMISndInit( &hmi );
+  // Switches
+  HMISWInit( &hmi );
 
-  // P4 -> ADC input (Vref 3.3V)
+  // P4 -> ADC input from potentio meters in stick gimbal (Vref 3.3V)
   /* PortConfADC( MPC.P40PFS, ASEL_ON, ISEL_OFF, PORT4, 0, PMR_FUNC, PDR_IN, 0 ); */
   /* PortConfADC( MPC.P41PFS, ASEL_ON, ISEL_OFF, PORT4, 1, PMR_FUNC, PDR_IN, 0 ); */
   /* PortConfADC( MPC.P42PFS, ASEL_ON, ISEL_OFF, PORT4, 2, PMR_FUNC, PDR_IN, 0 ); */
@@ -364,110 +165,44 @@ int main( void )
   PORTJ.PODR.BIT.B3    = 1;
   PORTJ.PDR.BIT.B3     = PDR_OUT;       // PMR_GPIO / PMR_FUNC
   PORTJ.PMR.BIT.B3     = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  //relock MPC
-  MPCLock();
 
-  // CMT0 setting (for HMI input time loop)
-  // td_in = 1ms (=1kHz); 12MHz * 4 / 2^9 / 2^(1+5)
-  CMT0.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK/512;
-  CMT0.CMCOR = 0x001F;                   // PCLK / 2^9 / 2^5;
-  CMT0.CMCR.BIT.CMIE = CMIE_EN;          // interrupt flag enable
-  IEN( CMT0, CMI0 ) = 0;
-  IPR( CMT0, CMI0 ) = 7;
-  // td_out = 10ms (=100fps); 12MHz * 2^2 / 2^9 / 2^(1+2+7)
-  CMT1.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK/512;
-  CMT1.CMCOR = 0x03FF;                   // PCLK / 2^9 / 2^10;
-  CMT1.CMCR.BIT.CMIE = CMIE_EN;          // interrupt flag enable
-  IEN( CMT1, CMI1 ) = 0;
-  IPR( CMT1, CMI1 ) = 8;
-  // start all HMI loop clock
-  CMT.CMSTR0.BIT.STR0 = CMSTRn_RUN;       // CMT_[RUN / STOP]
-  CMT.CMSTR0.BIT.STR1 = CMSTRn_RUN;       // CMT_[RUN / STOP]
+  // PC2,3 UART Main IF
+  //SerInit( &ser[UART_MSP], UART_BRATE_MSP, SER_HOST );
+  // PE1,2 UART Telemetry IF
+  //Ser12Init( &ser[UART_TELEMETRY], UART_BRATE_TELEM );
+
+  //relock MPC
+  SysMPCLock();
+
   
   // TPUa setting (for PPM)
   TPUA.TSTR.BIT.CST3   = CSTn_STOP;           // stop: TPU3
   TPU3.TCR.BIT.TPSC    = TPU39_TPSC_PCLK_16;  // (12Mhz x 4) / 2^4 -> 12M/2^2 = 3.0 MHz
-  TPU3.TCR.BIT.CKEG    = TPU_CKEG_EDGE;  // (12Mhz x 4) / 2^3 -> 12M/2   = 6.0 MHz
+  TPU3.TCR.BIT.CKEG    = TPU_CKEG_EDGE;       // (12Mhz x 4) / 2^3 -> 12M/2   = 6.0 MHz
   //TPU3.TCR.BIT.TPSC    = TPU39_TPSC_PCLK_4;   // (12Mhz x 4) / 2^4 -> 12M/2^2 = 3.0 MHz (high-reso test)
   //TPU3.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // (12Mhz x 4) / 2^3 -> 12M/2   = 6.0 MHz (high-reso test)
   TPU3.TCR.BIT.CCLR    = TPU_CCLR_TGRA;       // TCNT cleared by TGRA
   TPU3.TMDR.BIT.MD     = TPU_MD_NORM;         // normal mode
-  TPU3.TMDR.BIT.BFA    = TMDR_BFx_BUFF;        // buffer operation
-  TPU3.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // buffer operation
+  TPU3.TMDR.BIT.BFA    = TMDR_BFx_BUFF;       // buffer operation
+  TPU3.TMDR.BIT.BFB    = TMDR_BFx_NORM;       // buffer operation
   TPU3.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
   TPU3.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU3.TIORH.BIT.IOA   = IOX_OHCT;        // TIOCAn
-  TPU3.TIORH.BIT.IOB   = IOX_DE;          // disable
-  TPU3.TIORL.BIT.IOC   = IOX_DE;          // disable
-  TPU3.TIORL.BIT.IOD   = IOX_DE;          // disable
+  TPU3.TIORH.BIT.IOA   = IOX_OHCT;            // TIOCAn
+  TPU3.TIORH.BIT.IOB   = IOX_DE;              // disable
+  TPU3.TIORL.BIT.IOC   = IOX_DE;              // disable
+  TPU3.TIORL.BIT.IOD   = IOX_DE;              // disable
   TPU3.TIER.BIT.TGIEA  = TGIEX_EN;            // IRQ enable (temp DE)
   TPU3.TIER.BIT.TTGE   = TTGE_EN;             // enable: ADC start
 
-  //MTU2a settings ( for gradational LED, Red )
-  MTU.TSTR.BIT.CST4    = CSTn_STOP;           // stop: MTU4
-  MTU34Unlock();
-  //  MTU.TRWER.BIT.RWE    = TRWER_RWE_EN;
-  MTU4.TCR.BIT.TPSC    = MTU34_TPSC_PCLK;     // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
-  MTU4.TCR.BIT.CKEG    = CKEG_PEDGE;          // freq is same as above.
-  MTU4.TCR.BIT.CCLR    = CCLR_TGRB;           // TCNT cleared by TGRB
-  MTU4.TMDR.BIT.MD     = TMDR_MD_PWM1;         // PWM1 mode
-  MTU4.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
-  MTU4.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
-  MTU4.TIORH.BIT.IOA   = IOX_OLCH;           // MTIOCnA
-  MTU4.TIORH.BIT.IOB   = IOX_OLCL;           // MTIOCnA(PWM1)
-  MTU4.TIORL.BIT.IOC   = IOX_OLCH;          // disable
-  MTU4.TIORL.BIT.IOD   = IOX_OLCL;          // disable
-  MTU.TOER.BIT.OE3B    = OEny_DE;          // OEny_[DE/EN] MTIOC3B
-  MTU.TOER.BIT.OE4A    = OEny_EN;          // OEny_[DE/EN] MTIOC4A
-  MTU.TOER.BIT.OE4B    = OEny_DE;          // OEny_[DE/EN] MTIOC4B
-  MTU.TOER.BIT.OE3D    = OEny_DE;          // OEny_[DE/EN] MTIOC3D
-  MTU.TOER.BIT.OE4C    = OEny_EN;          // OEny_[DE/EN] MTIOC4C
-  MTU.TOER.BIT.OE4D    = OEny_DE;          // OEny_[DE/EN] MTIOC4D
   
-  //TPUa settings ( for gradational LED, Blue )
-  TPUA.TSTR.BIT.CST4   = CSTn_STOP;           // stop: TPU04
-  TPU4.TCR.BIT.TPSC    = TPU410_TPSC_PCLK;      // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
-  TPU4.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // freq is same as above.
-  TPU4.TCR.BIT.CCLR    = TPU_CCLR_TGRB;       // TCNT cleared by TGRA
-  TPU4.TMDR.BIT.MD     = TPU_MD_PWM1;         // PWM1 mode
-  TPU4.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
-  TPU4.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
-  TPU4.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
-  TPU4.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU4.TIOR.BIT.IOA    = IOX_OLCH;        // TIOCAn
-  TPU4.TIOR.BIT.IOB    = IOX_OLCL;          // disable
-  TPU4.TIER.BIT.TGIEA  = TGIEX_DE;            // IRQ enable (temp DE)
-  TPU4.TIER.BIT.TTGE   = TTGE_DE;             // enable: ADC start
+  // settings for gradational LED, Red / Green / Blue
+  /* HMIPortOutFuncLEDExtInit( ); */
+  // setings for Piezoelectric Sounder
+  /* HMIPortOutFuncSndInit( ); */
+
+  // setting for Rotary encoder
+  /* HMIPortInFuncInit( ); */
   
-  //TPUa settings ( for gradational LED, Green )
-  TPUA.TSTR.BIT.CST0   = CSTn_STOP;           // stop: TPU0
-  TPU0.TCR.BIT.TPSC    = TPU06_TPSC_PCLK;     // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
-  TPU0.TCR.BIT.CKEG    = TPU_CKEG_EDGE_IP_EN;  // freq is same as above.
-  TPU0.TCR.BIT.CCLR    = TPU_CCLR_TGRD;       // TCNT cleared by TGRC
-  TPU0.TMDR.BIT.MD     = TPU_MD_PWM1;         // PWM1 mode
-  TPU0.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
-  TPU0.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
-  TPU0.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;   // ch B (unused)
-  TPU0.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;   // ch D (unused)
-  TPU0.TIORH.BIT.IOA   = IOX_DE;          // disable
-  TPU0.TIORH.BIT.IOB   = IOX_DE;          // disable
-  TPU0.TIORL.BIT.IOC   = IOX_OLCH;        // TIOCCn
-  TPU0.TIORL.BIT.IOD   = IOX_OLCL;          // disable
-  TPU0.TIER.BIT.TGIEA  = TGIEX_DE;            // IRQ enable (temp DE)
-  TPU0.TIER.BIT.TTGE   = TTGE_DE;             // enable: ADC start
-
-  MTU0.TCR.BIT.TPSC    = MTU0_TPSC_PCLK;     // (12Mhz x 4) / 1 -> 2*2*3M/2^8 = ~48MHz
-  MTU0.TCR.BIT.CKEG    = CKEG_PEDGE;          // freq is same as above.
-  MTU0.TCR.BIT.CCLR    = CCLR_TGRD;           // TCNT cleared by TGRB
-  MTU0.TMDR.BIT.MD     = TMDR_MD_PWM1;         // PWM1 mode
-  MTU0.TMDR.BIT.BFA    = TMDR_BFx_NORM;        // normal operation
-  MTU0.TMDR.BIT.BFB    = TMDR_BFx_NORM;        // normal operation
-  MTU0.TIORH.BIT.IOA   = IOX_DE;           // disable
-  MTU0.TIORH.BIT.IOB   = IOX_DE;           // disable
-  MTU0.TIORL.BIT.IOC   = IOX_OLCH;          // MTIOCnC
-  MTU0.TIORL.BIT.IOD   = IOX_OLCL;          // MTIOCnA(PWM1)
-
-
   // ADC setting (to do: librarize setting process)
   S12AD.ADCSR.BIT.ADST  = ADST_STOP;   // ADST_START / ADST_STOP
   // scan ch setting ( ch select, addition )
@@ -478,7 +213,7 @@ int main( void )
   S12AD.ADADS0.WORD     = 0x202F;   // (b0010 0000 0010 1111) AN015 - AN000
   S12AD.ADADS1.WORD     = 0x0000;   // (b---- ---- ---0 0000) AN020 - AN016,
                                     //   |----> "-" is fixed value as 0
-  // config
+  // ADC config
   S12AD.ADCER.BIT.ACE      = ACE_DE;          // ACE_DE / ACE_EN
   S12AD.ADCER.BIT.ADRFMT   = ADRFMT_FLLEFT;   // ADRFMT_FLRIGHT / ADRFMT_FLLEFT
   S12AD.ADSTRGR.BIT.ADSTRS = ADSTRS_TRGAN_1;  // TPUn.TGRA
@@ -492,33 +227,20 @@ int main( void )
   S12AD.ADCSR.BIT.ADCS    = ADCS_SINGLE;     // ADCS_SINGLE / ADCS_CONT
   S12AD.ADCSR.BIT.ADST    = ADST_STOP;       // ADST_START / ADST_STOP
   // [to do: ] need to add irq setting
-
-  // LED gradation (initial value)
-  MTU4.TGRA = 0xFFFF;  // duty
-  MTU4.TGRB = 0xFFFF;  // cycle
-  MTU4.TGRC = 0xFFFF;  // duty
-  TPU4.TGRA = 0x1100;  // duty
-  TPU4.TGRB = 0xF000;  // cycle
-  TPU0.TGRC = 0xF010;  // duty
-  TPU0.TGRD = 0xFFF0;  // cycle
-  MTU0.TGRC = 0xFFFF;  // duty
-  MTU0.TGRD = 0xFFFF;  // cycle
-  MTU.TSTR.BIT.CST4   = CSTn_RUN;   // start to iluminite LED
-  MTU.TSTR.BIT.CST0   = CSTn_RUN;   // start to iluminite LED
-  //TPUA.TSTR.BIT.CST0   = CSTn_RUN;   // start to iluminite LED
-  //TPUA.TSTR.BIT.CST4   = CSTn_RUN;   // start to iluminate LED
   
   // PPM generation
   // Total frame length = 22.5msec
   // each pulse is 0.7..1.7ms long with a 0.3ms stop tail
-  // 8 times { H: init(0.7m)+(0 - 1.0 m) -> stop tail(0.3m) -> H: next... } + frame tail (H: 6.2m L: 0.3m)
+  //   -> 8 times { H: init(0.7m) + variable(0 - 1.0 m) + stop tail(0.3m)
+  //   -> frame tail (H: 6.2m L: 0.3m)
+  //   -> Go next frame (8 times) repetitively ...
   // requirements: time resolution < 1ms / 11bit   = 1m / 2^11 =~ 0.5u,
   //               max time length > 1ms           
   // calc time resolution:  1/(48M / 2^3) = 1/6 u = 166...ns
   // calc max time length:  2^16 / (48M / 2^3) = 1/(3*2^4) 2^19 us = 1/3 * 2^5 *1024 us = 32/3 * 1024 us = ~10ms
-  TPU3.TGRA            = 4200;     // 700u * 6.0M = 4200 ()
-  TPU3.TGRC            = 1800;     // 300u * 6.0M = 1800 ()
-  TPU3.TGRD            = 37200;     // 6200u * 6.0M = 1800 ()
+  TPU3.TGRA            = 4200;     //  700u * 6.0M = 4200 ()
+  TPU3.TGRC            = 1800;     //  300u * 6.0M = 1800 ()
+  TPU3.TGRD            = 37200;    // 6200u * 6.0M = 37200 ()
   //IR(TPU3, TGI3A) = 1;
   //IR(S12AD, S12ADI0) = 1;
   IEN( TPU3, TGI3A ) = 0;
@@ -533,22 +255,23 @@ int main( void )
 
   // initializing PPM ch val ( * future func *)
   // Name labels for each PPM ch
-  char name[NCH_PPM][10] = { "Roll", "Pitch", "Throttle", "Yaw", "Arm", "AUX2", "MODE", "AUX4" };
+  char ppm_chname[NCH_PPM][10] = { "Roll", "Pitch", "Throttle", "Yaw", "Arm", "AUX2", "FiteMD", "AUX4" };
   // set adj ( name str, ad_ch, inv, offset, gain )
-  PPMGenAdjInit( &ppm_adj[0], name[0],  2, PPMADJ_NOINV,  (182 * 6), 1.0 );
-  PPMGenAdjInit( &ppm_adj[1], name[1],  3, PPMADJ_INV,    (162 * 6), 1.0 );
-  PPMGenAdjInit( &ppm_adj[2], name[2],  0, PPMADJ_NOINV, -(114 * 6), 1.0 );
-  PPMGenAdjInit( &ppm_adj[3], name[3],  1, PPMADJ_INV,    (783 * 6), 1.0 );
-  PPMGenAdjInit( &ppm_adj[4], name[4], 22, PPMADJ_NOINV,          0, 1.0 );
-  PPMGenAdjInit( &ppm_adj[5], name[5], 22, PPMADJ_NOINV,          0, 1.0 );
-  PPMGenAdjInit( &ppm_adj[6], name[6], 22, PPMADJ_NOINV,          0, 1.0 );
-  PPMGenAdjInit( &ppm_adj[6], name[6], 22, PPMADJ_NOINV,          0, 1.0 );
+  PPMGenAdjInit( &ppm_adj[0], ppm_chname[0],  2, PPMADJ_NOINV,  (182 * 6), 1.0 );
+  PPMGenAdjInit( &ppm_adj[1], ppm_chname[1],  3, PPMADJ_INV,    (162 * 6), 1.0 );
+  PPMGenAdjInit( &ppm_adj[2], ppm_chname[2],  0, PPMADJ_NOINV, -(114 * 6), 1.0 );
+  PPMGenAdjInit( &ppm_adj[3], ppm_chname[3],  1, PPMADJ_INV,    (783 * 6), 1.0 );
+  PPMGenAdjInit( &ppm_adj[4], ppm_chname[4], 22, PPMADJ_NOINV,          0, 1.0 );
+  PPMGenAdjInit( &ppm_adj[5], ppm_chname[5], 22, PPMADJ_NOINV,          0, 1.0 );
+  PPMGenAdjInit( &ppm_adj[6], ppm_chname[6], 22, PPMADJ_NOINV,          0, 1.0 );
+  PPMGenAdjInit( &ppm_adj[7], ppm_chname[7], 22, PPMADJ_NOINV,          0, 1.0 );
 
+  sleep( 1000 );
   
   // 
   // Main routine start
   //
-  //
+  // Init
   op_md = OPMD_SAFE;
   uint8_t  status = 0, stat_ppm=0, div = 3;
   uint8_t  flag   = 0;
@@ -556,7 +279,8 @@ int main( void )
   //unsigned char test = 0;
 
   HMISWInit( &hmi );
-  
+
+  // main loop
   while(1) {
     // state machine
 
@@ -565,6 +289,7 @@ int main( void )
       //            throttle => zero
       //            Pitch, Roll, Yaw => neutral
     case OPMD_SAFE:
+      op_md_log = OPMD_LOG_OFF;
       if( HMILongPress( &hmi, HMI_SW_ARM_KEY, 1200 ) ){
       	op_md = OPMD_RUN_INIT;
       }
@@ -609,7 +334,7 @@ int main( void )
     default:
       break;
     }
-    HMILEDFlash( &hmi, op_md, op_md_bat, op_md_log );
+    HMIFlash( &hmi, op_md, op_md_bat, op_md_log );
     /* HMILEDBatLow( &hmi, op_md_bat ); */
     /* HMILEDSetRGB( &hmi, op_md );  */
 
@@ -733,158 +458,8 @@ int main( void )
 
 // -------------------------------------------------------
 // ----------------------------- Functions ( subroutines )
-//
-//  HMI utilities 
-//
-//  for Inputs
-uint8_t HMISWInit( st_HMI *hmi){
-    // reset state & time count of pressing
-    for( int i=0 ; HMI_N_SW < i ; i++ ){
-      hmi->sw_state[i] = 0;
-      hmi->sw_cnt[i]   = 0;
-    }
-    return( 0 );
-}
 
-uint8_t HMIScanSW ( st_HMI *hmi ){
-  // scan all input channels
-  if( IR( CMT0, CMI0 ) ){
-    // for debg
-    /* hmi->dbg_cnt++; */
-    /* if( (hmi->dbg_cnt >> 9) & 0x0001 ){ */
-    /*   PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2; */
-    /* } */
 
-    // get current states for each SW
-    hmi->sw_state[ HMI_SW_ARM_KEY ] = !PORTE.PIDR.BIT.B6;
-    hmi->sw_state[ HMI_SW_ARM_LOG ] = !PORTE.PIDR.BIT.B7;
-    hmi->sw_state[ HMI_SW_ROT     ] = !PORT5.PIDR.BIT.B2;
-    hmi->sw_state[ HMI_SW_L1_KEY  ] = !PORT5.PIDR.BIT.B1;
-    hmi->sw_state[ HMI_SW_L1_LCK  ] = !PORT5.PIDR.BIT.B0;
-    hmi->sw_state[ HMI_SW_L2_F    ] = !PORTC.PIDR.BIT.B1;
-    hmi->sw_state[ HMI_SW_L2_B    ] = !PORTC.PIDR.BIT.B0;
-    hmi->sw_state[ HMI_SW_R1_KEY  ] = !PORTE.PIDR.BIT.B4; // ?
-    hmi->sw_state[ HMI_SW_R1_LCK  ] = !PORTE.PIDR.BIT.B5; // ?
-    hmi->sw_state[ HMI_SW_R2_F    ] = !PORTE.PIDR.BIT.B0; // ?
-    hmi->sw_state[ HMI_SW_R2_B    ] = !PORTE.PIDR.BIT.B3; // ?
-
-    // renew time count of pressing
-    for( int i=0 ; i < HMI_N_SW ; i++ ){
-      if( hmi->sw_state[i] ){
-	if( hmi->sw_cnt[i] != 0xFFFF )
-	  hmi->sw_cnt[i]++;
-      }else{
-	if( hmi->sw_cnt[i] != 0 )
-	  hmi->sw_cnt[i]-- ;
-      }
-    }
-    
-    // rescan
-    IR( CMT0, CMI0 ) = 0;
-  }
-    return( 0 );
-}
-
-uint8_t HMISWState( st_HMI *hmi, enum enum_HMI_SW n_sw){
-  HMIScanSW( hmi );
-  return( hmi->sw_state[n_sw] );
-  //(old) using bit operation
-  //return( (hmi->sw_state[n_sw] >> n_sw) & 0x0001 );
-}
-
-uint8_t HMILongPress( st_HMI *hmi, enum enum_HMI_SW n_sw, uint16_t time ){
-  // SW scan
-  HMIScanSW( hmi );
-
-  // for debug
-  /* if( hmi->sw_cnt[ n_sw ] != 0 ){ */
-  /*   PORT2.PODR.BIT.B2 = 1;     */
-  /* }else{ */
-  /*   PORT2.PODR.BIT.B2 = 0;     */
-  /* } */
-  /* PORT2.PODR.BIT.B3 = hmi->sw_state[ n_sw ]; */
-  
-  // long press check ( msec )
-  if( hmi->sw_cnt[n_sw] >= time ){
-    return( 1 );
-  }else{
-    return( 0 );
-  }
-}
-
-uint8_t HMILEDPPMAct( st_HMI *hmi, enum enum_AppModeLog op_md_log, uint8_t div){
-  // PPM active indicator
-  if( op_md_log == OPMD_LOG_ON ){
-    PORT2.PODR.BIT.B3 = ( (hmi->ppm_cnt++ >> div) & 0x01 );
-    PORT3.PODR.BIT.B3 = 0;
-  }else{
-    PORT2.PODR.BIT.B3 = 0;
-    PORT3.PODR.BIT.B3 = ( (hmi->ppm_cnt++ >> div) & 0x01 );
-  }
-  return( 0 );
-}
-
-uint8_t HMILEDBatLow( st_HMI *hmi, enum enum_AppModeBat op_md_bat, uint8_t div ){
-  hmi->cnt_bat++;  
-  // Low battery indicater
-  if( op_md_bat == OPMD_BAT_LOW ){
-    PORT2.PODR.BIT.B2 = 1;
-  }else if( op_md_bat == OPMD_BAT_MID ){
-    PORT2.PODR.BIT.B2 = ( (hmi->cnt_bat++ >> div) & 0x01 );
-      /* PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2; */
-  }else{
-    PORT2.PODR.BIT.B2 = 0;
-  }
-  return( 0 );
-}
-
-uint8_t HMILEDSetRGB( st_HMI *hmi, enum enum_AppMode op_md ){
-  // RGB mode indicator
-  switch( op_md ){
-  case OPMD_SAFE:
-    MTU4.TGRA = 0x8000;  // Red
-    MTU0.TGRC = 0x8800;  // Green
-    MTU4.TGRC = 0x8800;  // Blue
-    break;
-  case OPMD_RUN_INIT:
-    MTU4.TGRA = 0x0040;  // Red
-    MTU0.TGRC = 0x2B00;  // Green
-    MTU4.TGRC = 0x0400;  // Blue
-    break;
-  case OPMD_RUN:
-    MTU4.TGRA = 0x0100;  // Red
-    MTU0.TGRC = 0xF000;  // Green
-    MTU4.TGRC = 0x1000;  // Blue
-    break;
-  case OPMD_FAIL:
-    MTU4.TGRA = 0xF000;  // Red
-    MTU0.TGRC = 0x0800;  // Green
-    MTU4.TGRC = 0x0800;  // Blue
-    break;
-  default:
-    MTU4.TGRA = 0xF000;  // Red
-    MTU0.TGRC = 0xF000;  // Green
-    MTU4.TGRC = 0xF000;  // Blue
-    break;
-  }
-  return( 0 );
-}
-
-uint8_t HMILEDFlash( st_HMI *hmi, enum enum_AppMode op_md,
-		     enum enum_AppModeBat op_md_bat,
-		     enum enum_AppModeLog op_md_log ){
-  /* if( IR( CMT1, CMI1 ) ){ */
-  if( IR( CMT1, CMI1 ) ){
-    /* PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2; */
-    /* PORT3.PODR.BIT.B2 = !PORT3.PODR.BIT.B2; */
-    HMILEDSetRGB( hmi, op_md );
-    HMILEDBatLow( hmi, op_md_bat, 8 );
-    HMILEDPPMAct( hmi, op_md_log, 4 );
-    // next frame
-    /* IR( CMT1, CMI1 ) = 0; */
-    IR( CMT1, CMI1 ) = 0;
-  }
-}
 
 // -------------------------------------------------------
 // ------------------------------- Functions ( Utilities )
@@ -908,47 +483,22 @@ void DataDisp( unsigned char data ){
 //
 //  lock / unlock Sytem core reg edit
 //
-void SysCoreLock( void ){
-  SYSTEM.PRCR.BIT.PRC0  = PRCn_LOCK;   // clk gen: SCKCR / SCKCR2 / SCKCR3 / PLLCR /
-                                       //          PLLCR2 / BCKCR / MOSCCR / SOSCCR /
-                                       //          LOCOCR / ILOCOCR / HOCOCR / OSTDC(S)R
-  SYSTEM.PRCR.BIT.PRC1  = PRCn_LOCK;   // operating modes: SYSCR0 / SYSCR1
-                                       // low pow modes:   SBYCR / MSTPCRA / MSTPCRB /
-                                       //                  MSTPCRC / MSTPCRD / OPCCR /
-                                       //                  RSTCKCR / MOSCWTCR / SOSCWTCR /
-                                       //                  PLLWTCR / DPSBYCR / DPSIER0-3 /
-                                       //                  DPSIFR0-3 / DPSIEGR0-3
-                                       // clk gen: MOFCR / HOCOPCR
-                                       // reset:   SWRR
-  SYSTEM.PRCR.BIT.PRC3  = PRCn_LOCK;   // lvd:     LVCMPCR / LVDLVLR / LVD1CR0 / LVD1CR1 /
-                                       //          LVD1SR / LVD2CR0 / LVD2CR1 / LVD2SR
-  SYSTEM.PRCR.BIT.PRKEY = PRKEY_LOCK;
-  SYSTEM.PRCR.WORD = 0x0000;
-}
+/* void SysCoreLock( void ){ */
+/*   SYSTEM.PRCR.BIT.PRC0  = PRCn_LOCK;   // clk gen: SCKCR / SCKCR2 / SCKCR3 / PLLCR / */
+/*                                        //          PLLCR2 / BCKCR / MOSCCR / SOSCCR / */
+/*                                        //          LOCOCR / ILOCOCR / HOCOCR / OSTDC(S)R */
+/*   SYSTEM.PRCR.BIT.PRC1  = PRCn_LOCK;   // operating modes: SYSCR0 / SYSCR1 */
+/*                                        // low pow modes:   SBYCR / MSTPCRA / MSTPCRB / */
+/*                                        //                  MSTPCRC / MSTPCRD / OPCCR / */
+/*                                        //                  RSTCKCR / MOSCWTCR / SOSCWTCR / */
+/*                                        //                  PLLWTCR / DPSBYCR / DPSIER0-3 / */
+/*                                        //                  DPSIFR0-3 / DPSIEGR0-3 */
+/*                                        // clk gen: MOFCR / HOCOPCR */
+/*                                        // reset:   SWRR */
+/*   SYSTEM.PRCR.BIT.PRC3  = PRCn_LOCK;   // lvd:     LVCMPCR / LVDLVLR / LVD1CR0 / LVD1CR1 / */
+/*                                        //          LVD1SR / LVD2CR0 / LVD2CR1 / LVD2SR */
+/*   SYSTEM.PRCR.BIT.PRKEY = PRKEY_LOCK; */
+/*   SYSTEM.PRCR.WORD = 0x0000; */
+/* } */
 
-void SysCoreUnlock( void ){
-  //SYSTEM.PRCR.BIT.PRKEY = PRKEY_UNLOCK;
-  //SYSTEM.PRCR.BIT.PRC0  = PRCn_UNLOCK;
-  //SYSTEM.PRCR.BIT.PRC1  = PRCn_UNLOCK;
-  //SYSTEM.PRCR.BIT.PRC3  = PRCn_UNLOCK;
-  SYSTEM.PRCR.WORD = 0xA503;
-}
-
-//
-//  lock / unlock MPC reg edit
-//
-void MPCUnlock( void ){
-  MPC.PWPR.BIT.B0WI  = B0WI_UNLOCK;
-  MPC.PWPR.BIT.PFSWE = PFSWE_UNLOCK;
-}
-
-void MPCLock( void ){
-  MPC.PWPR.BIT.PFSWE = PFSWE_LOCK;
-  MPC.PWPR.BIT.B0WI  = B0WI_LOCK;
-}
-
-void MTU34Unlock( void ){
-  if( MTU.TRWER.BIT.RWE == TRWER_RWE_DE ){
-    MTU.TRWER.BIT.RWE = TRWER_RWE_EN;
-  }
-}
+/* end of main.c */
