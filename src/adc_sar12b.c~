@@ -1,0 +1,15 @@
+
+#include "iodefine_enum.h"
+#include "typedefine.h"
+#include "sysutil_RX63N.h"
+#include "HMI.h"
+
+// -------------------------------------------------------
+// ----------------------------- Functions ( subroutines )
+//
+//  HMI utilities 
+//
+
+
+
+/* end of adc_sar12b */

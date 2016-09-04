@@ -1,0 +1,48 @@
+// -------------------------------------------------------
+// ------------------------------------------------ Notice
+//  This program is distributed or redistributed to
+//  the world under the License of MIT.
+//
+//  
+//
+// -------------------------------------------------------
+// ------------------------------------------------- Info.
+//
+//  Description:   Driver libraries for SAR-ADC input
+//
+//  Author:        S.Nakamura (shgwo)
+//
+//  Ver.:          0.5
+//  last updated : 2016.08.17
+//
+//  history:
+//    2016.08.17  port from main code to compose as library
+//    2016.mm.dd  
+//
+#ifndef __HMI_H__
+#define __HMI_H__
+
+// -------------------------------------------------------
+// ---------------------------------------------- Includes
+#include "iodefine.h"
+#include "iodefine_enum.h"
+#include "typedefine.h"
+#include "hTxoRX.h"
+
+// -------------------------------------------------------
+// ----------------------------------------------- Defines
+
+
+// -------------------------------------------------------
+// ----------------------------------------------- Structs
+typedef struct st_ADC {
+  // for output (Sounder)
+  enum enum_HMI_SND_PITCH pitch;
+  uint16_t tempo;
+} st_HMISnd;
+
+// -------------------------------------------------------
+// -------------------------------- Proto-type declaration
+
+
+#endif

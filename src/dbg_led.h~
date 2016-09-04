@@ -8,20 +8,19 @@
 // -------------------------------------------------------
 // ------------------------------------------------- Info.
 //
-//  Description:   Relative utilities for PPM generation
+//  Description:   Relative utilities for debug IO
 //
 //  Author:        S.Nakamura (shgwo)
 //
 //  Ver.:          0.1
-//  last updated : 2016.04.18
+//  last updated : 2016.08.17
 //
 //  history:
-//    2016.04.08  create for RX63N( GR-SAKURA ) base-system
-//    2016.04.16  add codes to operate TPU & ADC w/ synccronization
-//                (interrupt codes are not included yet..) 
+//    2016.08.17  port from main code for RX63N( GR-SAKURA ) base-system
+//                
 //
-#ifndef __HMI_H__
-#define __HMI_H__
+#ifndef __DBG_LED_H__
+#define __DBG_LED_H__
 
 // -------------------------------------------------------
 // ---------------------------------------------- Includes
@@ -29,13 +28,9 @@
 #include "iodefine_enum.h"
 #include "typedefine.h"
 #include "hTxoRX.h"
-#include "adc_sar12b.h"
-#include "serial.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
-#define HMI_DBG 1 // debug print (UART) OFF:0 / ON:1
-
 // label definition for HMI input source
 enum enum_HMI_SW {
   HMI_SW_GHOST,
@@ -95,15 +90,10 @@ enum enum_HMI_SND_PITCH {
   HMI_SND_G5,   // 783.99,
   HMI_SND_G5S,  // 830.61
   HMI_SND_A5,   // 880,
-  HMI_SND_A5S,  // 932.33,
-  HMI_SND_B5,   // 987.77,
   HMI_SND_A6,   // 1760,
   HMI_SND_A7,   // 3520,
   HMI_SND_A8    // 7040,
 };
-
-#define HMI_CYCLE_IN   1    // input loop cycle (ms)
-#define HMI_CYCLE_OUT  10   // output loop cycle (ms)
 
 #define HMI_SW_ON_THR  5    // cycle ( * CMT1 cycle )
 
@@ -114,7 +104,7 @@ enum enum_HMI_SND_PITCH {
 #define HMI_SND_FB_LEN       5     // cycle ( * CMT1 cycle )
 #define HMI_SND_MOR_S_LEN    10   // cycle ( * CMT1 cycle )
 #define HMI_SND_MOR_L_LEN    50  // cycle ( * CMT1 cycle )
-#define HMI_SND_BUFF         20  // num of beep
+#define HMI_SND_BUFF         20    // num of beep
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
@@ -126,7 +116,6 @@ typedef struct st_HMISnd {
 
 typedef struct st_HMI {
   // for inputs
-  uint16_t adc_val[ADC12_N_CH];
   uint8_t  sw_state[HMI_N_SW];
   uint8_t  sw_state_old[HMI_N_SW];
   uint8_t  sw_state_act;

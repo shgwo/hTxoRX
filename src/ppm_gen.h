@@ -28,26 +28,43 @@
 #include "iodefine.h"
 #include "iodefine_enum.h"
 #include "typedefine.h"
+#include "adc_sar12b.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
-#define NCH_PPM  8   // number of CH on PPM signal
+#define PPM_N_CH  8   // number of CH on PPM signal
 
 enum enum_PPMADJ{
   PPMADJ_NOINV,
   PPMADJ_INV
 };
 
+enum enum_PPMErr{
+  PPMERR_NOERR,     // No Error: normal operation
+  PPMERR_INIT,   // Error:    Initialization error
+  PPMERR_START,  // Error:    PPM Gen Start error
+  PPMERR_OP,     // Error:    PPM Gen self check error
+  PPMERR_EXPT    // Error:    unknown
+};
+
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
 typedef struct st_PPMAdj {
-  char     name[10];
-  uint8_t  ch_adc;
-  uint8_t  invert;
-  uint16_t offset;
-  double   gain;
+  char     name[10];  // id
+  uint8_t  ch_adc;    // ch no. of adc connected to hw
+  uint8_t  invert;    // data inversion requirement
+  uint16_t offset;    // offset adjustment
+  double   gain;      // gain adjustment
+  double   expo;      // exponential adjustment
 } st_PPMAdj;
 
+typedef struct st_PPM {
+  st_PPMAdj  adj[PPM_N_CH];
+  uint16_t   data[PPM_N_CH];
+  uint8_t    vect;            // ch vector in ppm generation
+  uint8_t    cnt_tail;          // ch vector in ppm generation
+  uint8_t    cnt_end;          // ch vector in ppm generation
+} st_PPM;
 
 struct st_ppm_pref {
   // fclk w/ prescaler
@@ -60,7 +77,9 @@ struct st_ppm_pref {
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
-extern int PPMGenAdjInit( struct st_PPMAdj* , char*, uint8_t, enum enum_PPMADJ, uint16_t, double );
-extern uint16_t ms2cnt( double, uint32_t );
+extern uint8_t PPMGenInit( void );
+extern uint8_t PPMGenStart( void );
+extern uint8_t PPMGenAdjInit( struct st_PPMAdj* , char*, uint8_t, enum enum_PPMADJ, uint16_t, double );
+extern uint8_t PPMGen( st_PPM *, st_ADC12 * );
 
 #endif

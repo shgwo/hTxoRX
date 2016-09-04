@@ -33,6 +33,10 @@
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
+// SFR definition
+#define SCI0_SSR    (*(volatile struct st_sci0_ssr    *)0x8A004)
+#define SCI12_SSR   (*(volatile struct st_sci0_ssr    *)0x8B304)
+
 // label definition for HMI input source
 enum enum_SERI_CHID {
   SER_SRV00,    // SCId ch0
@@ -40,7 +44,7 @@ enum enum_SERI_CHID {
   SER_SRV02,    // SCId ch2
   SER_SRV03,    // SCId ch3
   SER_SRV04,    // SCId ch4
-  SER_HOST,     // SCId ch5
+  SER_MSP,      // SCId ch5
   SER_SRV06,    // SCId ch6
   SER_SRV07,    // SCId ch7
   SER_SRV08,    // SCId ch8
@@ -62,6 +66,7 @@ enum enum_SERI_STAT {
 enum enum_SERI_ERR {
   SER_ERR_P,     // parity err
   SER_ERR_F,     // frame err
+  SER_ERR_PF,    // parity / frame err (ERI gen)
   SER_ERR_OR,    // over run err
   SER_N_ERR      // number of err state
 };
@@ -80,29 +85,50 @@ typedef struct st_SerialErr {
 
 typedef struct st_Serial {
   struct st_sci0 *addr_base;
-  uint8_t stat[SER_N_STAT];
-  uint8_t stat_err[SER_N_ERR];
-  uint8_t buff_tx[SER_BUFF];
-  uint8_t buff_rx[SER_BUFF];
+  struct st_icu  *addr_irq_base;
+  uint8_t vec_base;
+  uint8_t stat[SER_N_STAT];    // <= too big. omit??
+  uint8_t stat_err[SER_N_ERR]; // <= too big. omit??
+  // for receive
+  uint8_t tx_stat;
+  uint8_t tx_buff[SER_BUFF];
+  uint8_t tx_head;
+  uint8_t tx_tail;
+  // for transmission
+  uint8_t rx_stat;
+  uint8_t rx_buff[SER_BUFF];
+  uint8_t rx_head;
+  uint8_t rx_tail;
 } st_Serial;
 
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
-extern uint8_t SerGenBRR( st_Serial*, uint32_t, uint8_t );
+uint8_t SerGenBRR( st_Serial*, uint32_t, uint8_t );
   
 extern void SerStop( struct st_Serial* );
 extern void SerStart( struct st_Serial* );
-extern void SerPortInit( enum enum_SERI_CHID );
-extern uint8_t SerFuncInit( struct st_Serial*, uint32_t );
+void SerPortInit( enum enum_SERI_CHID );
+uint8_t SerFuncInit( struct st_Serial*, uint32_t );
 extern uint8_t SerInit( struct st_Serial*, uint32_t, enum enum_SERI_CHID );
 /* extern uint8_t SerGetStat( struct st_Serial* ); */
+extern uint8_t SerWriteBG( st_Serial* );
+extern uint8_t SerWrite( st_Serial*, uint8_t );
+extern uint8_t SerBytesWrite( st_Serial*, uint8_t * );
+extern uint8_t SerWriteTest( st_Serial*, uint8_t );
+extern uint8_t SerReadBG( st_Serial* );
+extern uint8_t SerRead( st_Serial* );
+extern uint8_t* SerBytesRead( st_Serial*, uint8_t );
+extern uint8_t SerReadTest( st_Serial* );
 
 extern void Ser12Stop( void );
 extern void Ser12Start( void );
-extern void Ser12PortInit( void );
-extern uint8_t Ser12FuncInit( struct st_Serial*, uint32_t );
+void Ser12PortInit( void );
+uint8_t Ser12FuncInit( struct st_Serial*, uint32_t );
 extern void Ser12Init( struct st_Serial*, uint32_t );
 /* extern uint8_t Ser12GetStat( struct st_Serial* ); */
+extern uint8_t Ser12ReadBG( st_Serial* );
+extern uint8_t Ser12Read( st_Serial* );
+extern uint8_t Ser12ReadTest( st_Serial* );
 
 #endif

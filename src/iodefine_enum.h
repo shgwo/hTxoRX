@@ -199,6 +199,45 @@ enum enum_P15PFS_PSEL {
   P15PFS_PIXD0=28        //11100b
 };
 
+enum enum_P16PFS_PSEL {
+  P16PFS_HIZ,            //00000b
+  P16PFS_MTIOC3C,        //00001b
+  P16PFS_MTIOC3D,        //00010b
+  P16PFS_TIOCB1,         //00011b
+  P16PFS_TCLKC,          //00100b
+  P16PFS_TMO2,           //00101b
+  P16PFS_PO14,           //00110b
+  P16PFS_RTCOUT,         //00111b
+  P16PFS_ADTRG0=9,       //01001b
+  P16PFS_TXD1,           //01010b
+  P16PFS_RXD3,           //01011b
+  P16PFS_MOSIA=13,       //01101b
+  P16PFS_SCL2_DS=15,     //01111b
+  P16PFS_IERXD,          //10000b
+  P16PFS_USB0_VBUS,      //10001b
+  P16PFS_USB0_VBUSEN,    //10010b
+  P16PFS_USB0_OVRCURB    //10011b
+};
+
+enum enum_P17PFS_PSEL {
+  P17PFS_HIZ,            //00000b
+  P17PFS_MTIOC3A,        //00001b
+  P17PFS_MTIOC3B,        //00010b
+  P17PFS_TIOB0,          //00011b
+  P17PFS_TCLKD,          //00100b
+  P17PFS_TMO1,           //00101b
+  P17PFS_PO15,           //00110b
+  P17PFS_POE8,           //00111b
+  P17PFS_ADTRG=9,        //01001b
+  P17PFS_SCK1,           //01010b
+  P17PFS_TXD3,           //01011b
+  P17PFS_MISOA=13,       //01101b
+  P17PFS_SDA2_DS=15,     //01111b
+  P17PFS_IETXD,          //10000b
+  P17PFS_USB1_VBUS,      //10001b
+  P17PFS_PIXD3=28        //11100b
+};
+
 enum enum_P21PFS_PSEL {
   P21PFS_HIZ,
   P21PFS_MTIOC1B,
@@ -832,6 +871,11 @@ enum enum_SCI_SPMR_CKPH {
   SCI_CKPH_DLY     // Clock is delayed.
 };
 
+enum enum_SCI_SPMR_CTSE {
+  // CTS Enable
+  SCI_CTSE_DE,    // CTS pin function is disabled
+  SCI_CTSE_EN     // CTS pin function is enabled
+};
 
 
 // bit meanings of S12ADa

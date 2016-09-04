@@ -1,0 +1,34 @@
+// -------------------------------------------------------
+// ------------------------------------------------ Notice
+//  This program is distributed or redistributed to
+//  the world under the License of MIT.
+//
+//  
+//
+// -------------------------------------------------------
+// ------------------------------------------------- Info.
+//
+//  Description:   Driver libraries for SAR-ADC input
+//
+//  Author:        S.Nakamura (shgwo)
+//
+//  Ver.:          0.1
+//  last updated : 2016.04.18
+//
+//  history:
+//    2016.08.17  port from main code to compose as library
+//    2016.mm.dd  
+//                
+//
+#ifndef __HMI_H__
+#define __HMI_H__
+
+// -------------------------------------------------------
+// ---------------------------------------------- Includes
+#include "iodefine.h"
+#include "iodefine_enum.h"
+#include "typedefine.h"
+#include "hTxoRX.h"
+
+// -------------------------------------------------------
+// ----------------------------------------------- Defines

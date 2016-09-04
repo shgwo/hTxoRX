@@ -107,7 +107,9 @@ void SysMdlStopInit( void ){
   MSTP(TPU3)  = MSTP_RUN;
   // for stick gimbal input
   MSTP(S12AD) = MSTP_RUN;
-  // for telemetry 
+  // for MSP via UART
+  MSTP(SCI5)  = MSTP_RUN;
+  // for telemetry via UART 
   MSTP(SCI12) = MSTP_RUN;
 }
 

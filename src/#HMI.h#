@@ -34,7 +34,7 @@
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
-#define HMI_DBG 1 // debug print (UART) OFF:0 / ON:1
+#define HMI_DBG 1 // debug print (UART) OFF:0 / ON:s1
 
 // label definition for HMI input source
 enum enum_HMI_SW {

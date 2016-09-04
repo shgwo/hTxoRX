@@ -48,7 +48,8 @@ install: $(TARGET).elf
 ##pumount $(DST_DL)
 
 rpi_install: $(TARGET).elf
-	scp $(TARGET).bin pi@192.168.1.31:$(DST_RPI)
+	scp $(TARGET).bin pi@192.168.1.30:$(DST_RPI)
+#	scp $(TARGET).bin pi@192.168.1.31:$(DST_RPI)
 ##pumount $(DST_DL)
 
 clean:
