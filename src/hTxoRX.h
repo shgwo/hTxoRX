@@ -52,12 +52,14 @@ enum enum_AppModeBat {
 
 enum enum_UARTApp {
   UART_MSP,
+  UART_IOA,
   UART_TELEM,
   UART_N_APP
 };
 
 #define UART_BRATE_MSP   115200
 //#define UART_BRATE_MSP   9600
+#define UART_BRATE_IOA   115200
 #define UART_BRATE_TELEM 9600
 //sssssssssssssssssssss#define UART_BRATE_TELEM 4800
 

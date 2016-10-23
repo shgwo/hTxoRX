@@ -276,6 +276,27 @@ enum enum_P25PFS_PSEL {
   P25PFS_HSYNC=28        //b11100
 };
 
+enum enum_P26PFS_PSEL {
+  P26PFS_HIZ,
+  P26PFS_MTIOC2A,
+  P26PFS_TMO1=5,         //b00101
+  P26PFS_PO6=6,          //b00110
+  P26PFS_TXD1=10,        //b01010
+  P26PFS_CTS31,          //b01011
+  P26PFS_MOSIB=13        //b01101
+};
+
+enum enum_P30PFS_PSEL {
+  P30PFS_HIZ,
+  P30PFS_MTIOC4B,
+  P30PFS_TMRI3=5,        //b00101
+  P30PFS_PO8,            //b00110
+  P30PFS_POE8,           //b00111
+  P30PFS_RXD1=10,        //b01010
+  P30PFS_MISOB=13,       //b01101
+  P30PFS_USB0_DRPD=19,   //b10011
+};
+
 enum enum_P32PFS_PSEL {
   P32PFS_HIZ,
   P32PFS_MTIOC0C,
@@ -335,7 +356,7 @@ enum enum_PE2PFS_PSEL {
   PE2PFS_PO23=6,       //0110b
   PE2PFS_RXD12=12,     //1100b
   PE2PFS_SSLB3,        //1101b
-  PE2PFS_MOSIB        //1110b
+  PE2PFS_MOSIB         //1110b
 };
 
 
@@ -850,6 +871,12 @@ enum enum_SCI_SEMR_ABCS {
   // Asynchronous Mode Base Clock Select
   SCI_ABCS_16CLK,   // Selects 16 base clock cycles for 1-bit period
   SCI_ABCS_8CLK     // Selects 8 base clock cycles for 1-bit period
+};
+
+enum enum_SCI_SEMR_NFEN {
+  // Digital Noise Filter Function Enable
+  SCI_NFEN_DE,   // Noise cancellation function for the RXDn input signal is disabled.
+  SCI_NFEN_EN    // Noise cancellation function for the RXDn input signal is enabled.
 };
 
 enum enum_SCI_SIMR1_IICM {

@@ -37,6 +37,8 @@ uint8_t PPMGenPortInit_RX63N( void ){
 
 // initialize unit convert constant
 uint8_t PPMGenConf_RX63N( void ){
+  // temp var
+  
   // PPM generation
   // Total frame length = 22.5msec
   // each pulse is 0.7..1.7ms long with a 0.3ms stop tail
@@ -169,14 +171,14 @@ uint8_t PPMGen( st_PPM *ppm, st_ADC12 *adc12 ){
     // tail pulse set
     if( TPU3.TGRA > (400 * 6) ){
       TPU3.TGRC = (300 * 6);
-      ppm->vect++;
+      ppm->ch_vec++;
       ppm->cnt_tail++;
-      if( ppm->vect > PPM_N_CH ){ ppm->vect = 0; }
+      if( ppm->ch_vec > PPM_N_CH ){ ppm->ch_vec = 0; }
     }
     // ppm pulse set
     else{
       // end pulse set
-      if( ppm->vect >= PPM_N_CH ){
+      if( ppm->ch_vec >= PPM_N_CH ){
 	TPU3.TGRC = (6200 * 6);
 	ppm->cnt_end++;
 	// debug
@@ -184,7 +186,7 @@ uint8_t PPMGen( st_PPM *ppm, st_ADC12 *adc12 ){
       }
       // significant pulse
       else{
-	TPU3.TGRC = (700 * 6) + ppm->data[ppm->vect];
+	TPU3.TGRC = (700 * 6) + ppm->data[ppm->ch_vec];
       }
     }
     IR( TPU3, TGI3A ) = 0;

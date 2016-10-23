@@ -35,6 +35,7 @@
 #include "serial.h"
 #include "adc_sar12b.h"
 #include "dbg_utils.h"
+#include <stdio.h>
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
@@ -115,6 +116,8 @@ int main( void )
   PPMGenInit();
   // PC2,3 UART Main IF
   SerInit( &ser[UART_MSP], UART_BRATE_MSP, SER_MSP );
+  // PC30,26 UART Infotaiment on the Air IF
+  SerInit( &ser[UART_IOA], UART_BRATE_IOA, SER_IOA );
   // PE1,2 UART Telemetry IF
   SerInit( &ser[UART_TELEM], UART_BRATE_TELEM, SER_TELEM );  
   /* Ser12Init( &ser[UART_TELEM], UART_BRATE_TELEM ); */
@@ -161,7 +164,10 @@ int main( void )
   uint8_t  flag   = 0;
   uint16_t ppm_val[8], adc_val[21], adc_bat = 0;
   uint8_t  mode_test = 0xAA;
-  uint8_t  dbg = 0x00, test = 0x00;
+  uint8_t  dbg = 0x00, dbg_in = 0x00, dbg_tgl = 0x00;
+  uint8_t  dat_telem[SER_BUFF], test = 0x00, dbg_ioa[SER_BUFF];
+  uint16_t dbg_cnt = 0x00;
+  char     dbg_str[SER_BUFF];
   //unsigned char test = 0;
   
   hTxSetMode( &htx, OPMD_SAFE);
@@ -217,7 +223,7 @@ int main( void )
       
       // end condition ( go to safe mode )
       if( HMILongPress( &hmi, HMI_SW_ARM_KEY, 300 ) ){ hTxSetMode( &htx, OPMD_SAFE);  SerWrite( &ser[UART_MSP], 'S' ); }
-      if( HMILongPress( &hmi, HMI_SW_L1_KEY, 50 ) ){ hTxSetMode( &htx, OPMD_SAFE);  SerWrite( &ser[UART_MSP], 'S' ); }
+      if( HMILongPress( &hmi, HMI_SW_L2_KEY, 50 ) ){ hTxSetMode( &htx, OPMD_SAFE);  SerWrite( &ser[UART_MSP], 'S' ); }
       // future func: stick disarm()
       break;
       
@@ -308,11 +314,13 @@ int main( void )
       PORTJ.PODR.BIT.B3 = !PORTJ.PODR.BIT.B3;
     }
 
-    // Back gound processes
+    // Back gound processes (UART)
+    SerDaemon( &ser[UART_MSP] );
+    SerDaemon( &ser[UART_IOA] );
+    SerDaemon( &ser[UART_TELEM] );
+
+    // Back gound processes (HMI)
     HMIFlash( &hmi, &htx );
-    SerWriteBG( &ser[UART_MSP] );
-    SerReadBG( &ser[UART_MSP] );
-    SerReadBG( &ser[UART_TELEM] );
     //if( Ser12ReadBG( &ser[UART_TELEM] ); ){
       // error sequence
       
@@ -320,11 +328,64 @@ int main( void )
     //SerWriteTest( &ser[UART_MSP], mode_test );
     /* HMILEDBatLow( &hmi, op_md_bat ); */
     /* HMILEDSetRGB( &hmi, op_md );  */
-    
-    // HMI routine
+ 
+    // debug routine
     // LED indication (for debug, printf)
+    if( !HMISWState( &hmi, HMI_SW_R2_B ) ){
+      // IOA (Infotainment over Air) data stream
+      //SerBytesRead( &ser[UART_IOA], dbg_ioa);
+      //SerBytesWrite( &ser[UART_IOA], dbg_ioa);
+      //SerBytesWrite( &ser[UART_IOA], "hTxoRX: IOA test stream.\n\r");
+      // 
+      dbg_in = SerRead( &ser[UART_MSP]);
+      dbg_in = dbg_in | SerRead( &ser[UART_IOA]);
+      if( dbg_in == 'd' ){
+	/* SerBytesWrite( &ser[UART_MSP], "<dbg toggle>"); */
+	dbg_tgl = ~dbg_tgl;
+      }
+      if( (dbg_tgl) && (dbg_cnt++ == 0x00) ){
+	//SerBytesWrite( &ser[UART_IOA], "AT" );
+	//SerBytesRead( &ser[UART_TELEM], dat_telem );
+	/* test = SerRead( &ser[UART_TELEM] ); */
+	SerBytesRead( &ser[UART_TELEM], dat_telem );
+	sprintf( dbg_str, "dbg:(0x%02X)[head %d/tail %d] ",
+		 dat_telem[0], ser[UART_TELEM].rx_head, ser[UART_TELEM].rx_tail );
+	SerBytesWrite( &ser[UART_MSP], dbg_str );
+	uint8_t *sci_err = (uint8_t *)(0x0008B304);
+	sprintf( dbg_str, "SCI12.SSR(0x" );
+	SerBytesWrite( &ser[UART_MSP], dbg_str );
+	SerBytesWrite( &ser[UART_IOA], dat_telem);
+	for( int j=0 ; j<sizeof(uint8_t)*8 ; j++ ){
+	  if( (*sci_err >> (7-j)) & 0x01 )
+	    SerWrite( &ser[UART_MSP], '1' );
+	  else
+	    SerWrite( &ser[UART_MSP], '0' );
+	}
+	sprintf( dbg_str, ")\n\r" );
+	SerBytesWrite( &ser[UART_MSP], dbg_str );
+	*sci_err = *sci_err & ~0x38;
+	
+	/* SerBytesWrite( &ser[UART_MSP], dbg_str ); */
+	/* SerBytesWrite( &ser[UART_MSP], "dbg:" ); */
+	/* /\* SerWrite( &ser[UART_MSP], test); *\/ */
+	/* SerBytesWrite( &ser[UART_MSP], "[head/tail][" ); */
+	/* test = 0x30 + (ser[UART_TELEM].rx_head % 10); */
+	/* SerWrite( &ser[UART_MSP], test); */
+	/* test = 0x30 + (ser[UART_TELEM].rx_tail % 10); */
+	/* SerBytesWrite( &ser[UART_MSP], "/" ); */
+	/* SerWrite( &ser[UART_MSP], test); */
+	
+	SerBytesWrite( &ser[UART_TELEM], "test, " );
+	//SerWrite( &ser[UART_TELEM], dbg );
+	if( dbg = SerRead( &ser[UART_TELEM] ) ){
 
-    if( HMISWState( &hmi, HMI_SW_R2_F ) ){
+	  sprintf( dbg_str, "0x%0X", dbg );
+	  SerBytesWrite( &ser[UART_MSP], dbg_str );
+	  //SerWrite( &ser[UART_MSP], (0x30 + (ser[UART_TELEM].rx_head % 10)) );
+	  //SerWrite( &ser[UART_MSP], (0x30 + (dbg % 10)) );
+	  SerWrite( &ser[UART_MSP], ' ' );
+	}	
+      }
       /* // GPIO telem pin check */
       /* if( PORTE.PIDR.BIT.B2 ){ */
       /* 	SerWrite( &ser[UART_MSP], '1'); */
@@ -334,14 +395,10 @@ int main( void )
       //dbg = 0x30 + SerRead( &ser[UART_TELEM] ) % 10;
       /* dbg = SerRead( &ser[UART_TELEM] ); */
       /* SerWrite( &ser[UART_MSP], dbg ); */
-      dbg = SerRead( &ser[UART_MSP]);
-      test = SerReadTest( &ser[UART_TELEM] );
-      SerWrite( &ser[UART_MSP], test);
+
       /* 	SerBytesWrite( &ser[UART_MSP], (0x30 + (ser[UART_MSP].rx_head % 10)) ); */
       /* } */
-      if( dbg = SerRead( &ser[UART_TELEM] ) ){
-	SerWrite( &ser[UART_MSP], (0x30 + (ser[UART_TELEM].rx_head % 10)) );
-      }
+
       //SerWrite( &ser[UART_MSP], (0x30 + (ser[UART_TELEM].rx_tail % 10)) );
       //SerWrite( &ser[UART_TELEM], (0x30 + (ser[UART_TELEM].rx_tail % 10)) );
       /* SerWrite( &ser[UART_MSP], ser[UART_TELEM].rx_head ); */

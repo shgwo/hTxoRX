@@ -362,17 +362,17 @@ uint8_t HMIScanSW ( st_HMI *hmi ){
     // get current states for each SW
     hmi->sw_state[ HMI_SW_ARM_KEY ] = !PORTE.PIDR.BIT.B6;
     hmi->sw_state[ HMI_SW_ARM_LOG ] = !PORTE.PIDR.BIT.B7;
-    hmi->sw_state[ HMI_SW_ROT     ] = !PORT1.PIDR.BIT.B2;
+    hmi->sw_state[ HMI_SW_ROT_KEY ] = !PORT1.PIDR.BIT.B2;
     hmi->sw_state[ HMI_SW_ROT_A   ] = !PORT1.PIDR.BIT.B6;
     hmi->sw_state[ HMI_SW_ROT_B   ] = !PORT1.PIDR.BIT.B7;
     //    hmi->sw_state[ HMI_SW_ROT_CNT ] = MTU1.TCNT;
-    hmi->sw_state[ HMI_SW_L1_KEY  ] = !PORT5.PIDR.BIT.B1;
-    hmi->sw_state[ HMI_SW_L1_LCK  ] = !PORT5.PIDR.BIT.B0;
-    hmi->sw_state[ HMI_SW_L2_F    ] = !PORTC.PIDR.BIT.B1;
-    hmi->sw_state[ HMI_SW_L2_B    ] = !PORTC.PIDR.BIT.B0;
+    hmi->sw_state[ HMI_SW_MD_F    ] = !PORT5.PIDR.BIT.B1;
+    hmi->sw_state[ HMI_SW_MD_B    ] = !PORT5.PIDR.BIT.B0;
+    hmi->sw_state[ HMI_SW_L2_KEY  ] = !PORTC.PIDR.BIT.B1;
+    hmi->sw_state[ HMI_SW_L2_LCK  ] = !PORTC.PIDR.BIT.B0;
     hmi->sw_state[ HMI_SW_R1_KEY  ] = !PORTE.PIDR.BIT.B4; // ?
     hmi->sw_state[ HMI_SW_R1_LCK  ] = !PORTE.PIDR.BIT.B5; // ?
-    hmi->sw_state[ HMI_SW_R2_F    ] = !PORTE.PIDR.BIT.B0; // ?
+    //hmi->sw_state[ HMI_SW_R2_F    ] = !PORTE.PIDR.BIT.B0; // ?
     hmi->sw_state[ HMI_SW_R2_B    ] = !PORTE.PIDR.BIT.B3; // ?
 
     // renew time count of pressing
@@ -492,12 +492,12 @@ uint8_t HMILEDFBRGB( st_HMI *hmi ){
 	hmi->LED_RGB[HMI_LED_G] = 0xAF00;  // Green
 	hmi->LED_RGB[HMI_LED_B] = 0x00FF;  // Blue
 	break;
-      case HMI_SW_ROT:
+      case HMI_SW_ROT_KEY:
 	hmi->LED_RGB[HMI_LED_R] = 0x0000;  // Red
 	hmi->LED_RGB[HMI_LED_G] = 0xAF00;  // Green
 	hmi->LED_RGB[HMI_LED_B] = 0xAF00;  // Blue
 	break;
-      case HMI_SW_L1_KEY:
+      case HMI_SW_L2_KEY:
 	hmi->LED_RGB[HMI_LED_R] = 0xAF00;  // Red
 	hmi->LED_RGB[HMI_LED_G] = 0x0100;  // Green
 	hmi->LED_RGB[HMI_LED_B] = 0xAF00;  // Blue

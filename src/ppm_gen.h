@@ -59,9 +59,10 @@ typedef struct st_PPMAdj {
 } st_PPMAdj;
 
 typedef struct st_PPM {
-  st_PPMAdj  adj[PPM_N_CH];
-  uint16_t   data[PPM_N_CH];
-  uint8_t    vect;            // ch vector in ppm generation
+  uint8_t    ir_vec;          // interrupt vector
+  st_PPMAdj  adj[PPM_N_CH];   // output adjust setting
+  uint16_t   data[PPM_N_CH];  // output data
+  uint8_t    ch_vec;          // ch vector in ppm generation
   uint8_t    cnt_tail;          // ch vector in ppm generation
   uint8_t    cnt_end;          // ch vector in ppm generation
 } st_PPM;

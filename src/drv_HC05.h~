@@ -71,6 +71,19 @@ enum enum_SER_ERR {
   SER_N_ERR      // number of err state
 };
 
+// for BT/UART dongle command 
+enum enum_SER_HC05 {
+  SER_HC05_OK,    // AT
+  SER_HC05_VER,   // AT+VERSION Linvor1.5
+  SER_HC05_BAUD,  // AT+BAUDx (x: 1 - C )
+                  //  (    1200 /   2400 /   4800 /    9600
+                  //   /  19200 /  38400 /  53600 /  115200
+                  //   / 230400 / 460800 / 921600 / 1382400 )
+  SER_HC05_NAME,  // AT+NAME[String]
+  SER_HC05_PIN,   // AT+PIN[PIN #]
+  SER_N_HC05      // number of err state
+};
+
 #define SER_BUFF 256
 
 // calc: N = 48 * 10^6 / ( 64 * 2^(2n-1) * 9600 ) - 1

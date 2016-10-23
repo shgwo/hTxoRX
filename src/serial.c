@@ -50,31 +50,48 @@ uint8_t SerGenBRR( st_Serial *ser,
 }
 
 
-void SerPortInit( enum enum_SERI_CHID ch ){
+void SerPortInit( enum enum_SER_CHID ch ){
   switch( ch ){
   case SER_MSP:
-    // PE1, PE2 -> UART Port setting (Rx/Tx) 
+    // PC2, PC3 -> UART Port setting (Rx/Tx)
+    // init
     PORTC.PCR.BIT.B2   = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
     PORTC.PODR.BIT.B3  = 0;
     PORTC.PDR.BIT.B2   = PDR_IN;           // PDR_IN / PDR_OUT
-    PORTC.PDR.BIT.B3   = PDR_OUT;          // PDR_IN / PDR_OUT    
+    PORTC.PDR.BIT.B3   = PDR_OUT;          // PDR_IN / PDR_OUT
     PORTC.PMR.BIT.B2   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
     PORTC.PMR.BIT.B3   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
-    
+    // func
     MPC.PC2PFS.BIT.PSEL  = PC2PFS_RXD5;
     MPC.PC3PFS.BIT.PSEL  = PC3PFS_TXD5;
     PORTC.PMR.BIT.B2     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
     PORTC.PMR.BIT.B3     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
     break;
+  case SER_IOA:
+    // P30, P26 -> UART Port setting (Rx/Tx)
+    // init
+    PORT3.PCR.BIT.B0   = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
+    PORT2.PODR.BIT.B6  = 0;
+    PORT3.PDR.BIT.B0   = PDR_IN;           // PDR_IN / PDR_OUT
+    PORT2.PDR.BIT.B6   = PDR_OUT;          // PDR_IN / PDR_OUT
+    PORT3.PMR.BIT.B0   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
+    PORT2.PMR.BIT.B6   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
+    // func
+    MPC.P30PFS.BIT.PSEL  = P30PFS_RXD1;
+    MPC.P26PFS.BIT.PSEL  = P26PFS_TXD1;
+    PORT3.PMR.BIT.B0     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+    PORT2.PMR.BIT.B6     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+    break;
   case SER_TELEM:
     // PE1, PE2 -> UART Port setting (Rx/Tx)
+    // init
     PORTE.PODR.BIT.B1  = 0;
     PORTE.PCR.BIT.B2   = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
     PORTE.PDR.BIT.B1   = PDR_OUT;          // PDR_IN / PDR_OUT
     PORTE.PDR.BIT.B2   = PDR_IN;           // PDR_IN / PDR_OUT
     PORTE.PMR.BIT.B1   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
     PORTE.PMR.BIT.B2   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC
-
+    // func
     MPC.PE1PFS.BIT.PSEL  = PE1PFS_TXD12;
     MPC.PE2PFS.BIT.PSEL  = PE2PFS_RXD12;
     PORTE.PMR.BIT.B1     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
@@ -86,20 +103,26 @@ void SerPortInit( enum enum_SERI_CHID ch ){
 }
 
 void SerReadStart( st_Serial *ser ){
-  volatile struct st_sci0 *sci = ser->addr_base;
+  volatile struct st_sci0 *sci         = ser->addr_base;
+  volatile struct st_sci0_ssr *sci_ssr = ser->addr_stat_base;
   // IRQ base vector
   uint8_t vec = ser->vec_base; // 0: RXI, +1: TXI, +2: TEI
+  // clear status flag
+  sci_ssr->BYTE = sci_ssr->BYTE & ~0x38;
   // clear IRQ flag
   ICU.IR[vec].BIT.IR = 0;
-  // reboot UART transmission
+  // reboot UART reception
   sci->SCR.BIT.RIE  = SCI_RIE_EN;     // RXI and ERI interrupt requests are enabled
   sci->SCR.BIT.RE   = SCI_RE_EN;      // Serial reception is enabled
 }
 
 void SerWriteStart( st_Serial *ser ){
-  volatile struct st_sci0 *sci = ser->addr_base;
+  volatile struct st_sci0 *sci         = ser->addr_base;
+  volatile struct st_sci0_ssr *sci_ssr = ser->addr_stat_base;
   // IRQ base vector
   uint8_t vec = ser->vec_base; // 0: RXI, +1: TXI, +2: TEI
+  // clear status flag
+  sci_ssr->BYTE = sci_ssr->BYTE & ~0x04;
   // clear IRQ flag
   ICU.IR[vec+1].BIT.IR = 0;
   ICU.IR[vec+2].BIT.IR = 0;
@@ -122,7 +145,7 @@ void SerReadStop( st_Serial *ser ){
   volatile struct st_sci0 *sci = ser->addr_base;
   // IRQ base vector
   uint8_t vec = ser->vec_base; // 0: RXI, +1: TXI, +2: TEI
-  // suspend UART transmission
+  // suspend UART reception
   sci->SCR.BIT.RIE  = SCI_RIE_DE;     // RXI and ERI interrupt requests are disabled
   sci->SCR.BIT.RE   = SCI_RE_DE;      // Serial reception is disabled
   // clear IRQ flag
@@ -155,23 +178,25 @@ void SerStop( st_Serial *ser ){
 uint8_t SerFuncInit( struct st_Serial *ser, uint32_t brate ){
   volatile struct st_sci0 *sci = ser->addr_base;
   // UART function settings
+  sci->SCR.BYTE       = 0x00;            // init (from the UM)
   sci->SCR.BIT.CKE    = SCI_CKE_OCHPIO;  // On-chip baud rate generator (SCK as I/O)
   sci->SIMR1.BIT.IICM = SCI_IICM_SCIF;   // Serial interface mode
   sci->SPMR.BIT.CKPOL = SCI_CKPOL_NORM;  // Clock polarity is not inverted.
   sci->SPMR.BIT.CKPH  = SCI_CKPH_NORM;   // Clock is not delayed.
   sci->SPMR.BIT.CTSE  = SCI_CTSE_DE;     // CTS pin function is disabled
-  sci->SCMR.BIT.SMIF  = SCI_SMIF_SCIF;   // Serial communications interface mode
-  sci->SCMR.BIT.SINV  = SCI_SINV_NORM;   // TDR contents are transmitted as they are.
-  sci->SCMR.BIT.SDIR  = SCI_SDIR_LSB;    // Transfer with LSB-first
-  /* sci.SEMR.ACS0  = SCI_ACS0_EXCLK;  // External clock input */
-  sci->SEMR.BIT.ABCS  = SCI_ABCS_16CLK;  // Selects 16 base clock cycles for 1-bit period
   sci->SMR.BIT.CKS    = SCI_CKS_PCLK;   // PCLK / 1
   sci->SMR.BIT.CM     = SCI_CM_ASYNC;   // Asynchronous mode
   sci->SMR.BIT.CHR    = SCI_CHR_8;      // Selects 8 bits as the data length
   sci->SMR.BIT.STOP   = SCI_STOP_1;     // 1 stop bit
   sci->SMR.BIT.PE     = SCI_PE_DE;      // Parity bit addition is not performed
-  /* sci.SMR.BIT.PM   = SCI_PM_ODD      // Select odd parity */
+  sci->SMR.BIT.PM     = SCI_PM_ODD;     // Select odd parity (** unused **)
   sci->SMR.BIT.MP     = SCI_MP_DE;      // disabled
+  sci->SCMR.BIT.SMIF  = SCI_SMIF_SCIF;   // Serial communications interface mode
+  sci->SCMR.BIT.SINV  = SCI_SINV_NORM;   // TDR contents are transmitted as they are.
+  sci->SCMR.BIT.SDIR  = SCI_SDIR_LSB;    // Transfer with LSB-first
+  sci->SEMR.BIT.ACS0  = SCI_ACS0_EXCLK;  // External clock input
+  sci->SEMR.BIT.ABCS  = SCI_ABCS_16CLK;  // Selects 16 base clock cycles for 1-bit period
+  sci->SEMR.BIT.NFEN  = SCI_NFEN_DE;     // Noise cancellation function for the RXDn input signal is disabled.
   /* sci.SCR.MPIE = SCI_MPIE_NORM;  // Normal reception */
   /* sci.SSR.MPB = SCI_MPB_ID;    // ID transmission cycles */
   /* sci.SSR.MPBT = SCI_MPBT_ID;    // ID transmission cycles */
@@ -189,7 +214,7 @@ uint8_t SerFuncInit( struct st_Serial *ser, uint32_t brate ){
   sci->BRR = SerGenBRR( ser, brate, XTAL_MHZ );
 }
 
-uint8_t SerInit( st_Serial *ser, uint32_t brate, enum enum_SERI_CHID ch ){
+uint8_t SerInit( st_Serial *ser, uint32_t brate, enum enum_SER_CHID ch ){
   // var init
   ser->tx_stat = 0;
   ser->tx_head = 0;
@@ -200,10 +225,12 @@ uint8_t SerInit( st_Serial *ser, uint32_t brate, enum enum_SERI_CHID ch ){
   // gen SCI SFR addr_base for each ch
   switch( ch ){
   case SER_TELEM:
-    ser->addr_base     = (struct st_sci0 *)(0x0008B300);
+    ser->addr_base      = (struct st_sci0 *)(0x0008B300);
+    ser->addr_stat_base = (struct st_sci0_ssr *)(0x0008B304);
     break;
   default:
-    ser->addr_base     = (struct st_sci0 *)(0x0008A000 + (uint32_t)(0x20 * ch));
+    ser->addr_base      = (struct st_sci0 *)(0x0008A000 + (uint32_t)(0x20 * ch));
+    ser->addr_stat_base = (struct st_sci0_ssr *)(0x0008A004 + (uint32_t)(0x20 * ch));
     break;
   }
   //    ser->addr_irq_base = IR(SCI0, TXI0) + (struct st_icu  *)(0x04 * 3 * ch);
@@ -361,17 +388,23 @@ uint8_t SerRead( st_Serial *ser ){
   //
   if( ret = SerReadDecue( ser ) ){
   }else{
-    ser->rx_stat = 0;
-    ser->rx_head = 0;
-    ser->rx_tail = 0;    
+    /* ser->rx_stat = 0; */
+    /* ser->rx_head = 0; */
+    /* ser->rx_tail = 0;     */
   }
   return( ret );
 }
 
-uint8_t *SerBytesRead( st_Serial *ser, uint8_t size ){
+uint8_t SerBytesRead( st_Serial *ser, uint8_t *str ){
+  // temp var
+  char temp;
   // UART port initialization
-  for( int i=0 ; i<size ; i++ ){
-    
+  for( uint8_t i=0 ; i < SER_BUFF ; i++ ){
+    if( temp = SerReadDecue( ser ) ){
+      str[i] = temp;
+    }else{
+      return( i );
+    }
   }
   // start to receive
   return( 0 );
@@ -394,6 +427,14 @@ uint8_t SerReadTest( st_Serial *ser ){
   return( ret );
 }
 
+uint8_t SerDaemon( st_Serial *ser ){
+  if( SerReadBG( ser ) )
+    return(1);
+  if( SerWriteBG( ser ) )
+    return(2);
+  
+  return(0);
+}
 
 
 void Ser12PortInit( void ){

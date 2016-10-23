@@ -109,6 +109,8 @@ void SysMdlStopInit( void ){
   MSTP(S12AD) = MSTP_RUN;
   // for MSP via UART
   MSTP(SCI5)  = MSTP_RUN;
+  // for IOA via UART
+  MSTP(SCI1)  = MSTP_RUN;
   // for telemetry via UART 
   MSTP(SCI12) = MSTP_RUN;
 }
