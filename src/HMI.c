@@ -69,10 +69,10 @@ uint8_t HMIPortInInit( void ){
   
   // PC[0:1], P5[0:1] -> reserved SW input
   // ( P52: SW #0 [ LeftLeft ]  (ON) on rotary encoder
-  //   P50: SW #1 [ Left ]      ON
-  //   P51: SW #1 [ Left ]      (ON)
-  //   PC0: SW #2 [ Left mid ]  tail   
-  //   PC1: SW #2 [ Left mid ]  head
+  //   P50: SW #1 [ Left ]      tail
+  //   P51: SW #1 [ Left ]      head
+  //   PC0: SW #2 [ Left mid ]  (ON)
+  //   PC1: SW #2 [ Left mid ]  ON
   //   PE0: SW #3 [ Right mid ] 
   //   PE3: SW #3 [ Right mid ] 
   //   PE4: SW #4 [ Right ] (ON)
@@ -366,10 +366,10 @@ uint8_t HMIScanSW ( st_HMI *hmi ){
     hmi->sw_state[ HMI_SW_ROT_A   ] = !PORT1.PIDR.BIT.B6;
     hmi->sw_state[ HMI_SW_ROT_B   ] = !PORT1.PIDR.BIT.B7;
     //    hmi->sw_state[ HMI_SW_ROT_CNT ] = MTU1.TCNT;
-    hmi->sw_state[ HMI_SW_MD_F    ] = !PORT5.PIDR.BIT.B1;
-    hmi->sw_state[ HMI_SW_MD_B    ] = !PORT5.PIDR.BIT.B0;
-    hmi->sw_state[ HMI_SW_L2_KEY  ] = !PORTC.PIDR.BIT.B1;
-    hmi->sw_state[ HMI_SW_L2_LCK  ] = !PORTC.PIDR.BIT.B0;
+    hmi->sw_state[ HMI_SW_MD_F    ] = !PORT5.PIDR.BIT.B2;
+    hmi->sw_state[ HMI_SW_MD_B    ] = !PORT5.PIDR.BIT.B1;
+    hmi->sw_state[ HMI_SW_L2_KEY  ] = !PORT5.PIDR.BIT.B0;
+    hmi->sw_state[ HMI_SW_L2_LCK  ] = !PORTC.PIDR.BIT.B1;
     hmi->sw_state[ HMI_SW_R1_KEY  ] = !PORTE.PIDR.BIT.B4; // ?
     hmi->sw_state[ HMI_SW_R1_LCK  ] = !PORTE.PIDR.BIT.B5; // ?
     //hmi->sw_state[ HMI_SW_R2_F    ] = !PORTE.PIDR.BIT.B0; // ?
@@ -433,36 +433,48 @@ uint8_t HMILongPress( st_HMI *hmi, enum enum_HMI_SW n_sw, uint16_t time ){
 uint8_t HMILEDPPMAct( st_HMI *hmi, st_hTx *htx, uint8_t div){
   // PPM active indicator
   if( htx->opmd_log == OPMD_LOG_ON ){
-    PORT2.PODR.BIT.B3 = ( (hmi->ppm_cnt++ >> div) & 0x01 );
+    PORT2.PODR.BIT.B3 = ( (hmi->ppm_cnt >> div) & 0x01 );
     PORT3.PODR.BIT.B3 = 0;
   }else{
     PORT2.PODR.BIT.B3 = 0;
-    PORT3.PODR.BIT.B3 = ( (hmi->ppm_cnt++ >> div) & 0x01 );
+    PORT3.PODR.BIT.B3 = ( (hmi->ppm_cnt >> div) & 0x01 );
   }
   return( 0 );
 }
 
-uint8_t HMILEDBatLow( st_HMI *hmi, st_hTx *htx, uint8_t div ){
+uint8_t HMILEDBatLow( st_HMI *hmi, st_hTx *htx, uint8_t cyc ){
   // temp var
   uint8_t temp = 0;
-  hmi->cnt_bat++;  
-  // Low battery indicater
+  // battery indicating cycle
+  if( (hmi->cnt_bat++ != cyc ) ){
+    return ( 0 );
+  }else{
+    hmi->cnt_bat = 0;
+  }
+  // battery indicater routine
   switch( htx->opmd_bat ){
     // deadly low
-  case OPMD_BAT_LOW:
+  case OPMD_BAT_DEAD:
     PORT2.PODR.BIT.B2 = 1;
-    hmi->snd_state_fb = 1;
+    hmi->snd_state_fb = 1;  /* sounder control: frequent */
     break;
     // low
-  case OPMD_BAT_MID:
+  case OPMD_BAT_LOW:
     temp = PORT2.PODR.BIT.B2;
-    PORT2.PODR.BIT.B2 = ( (hmi->cnt_bat++ >> div) & 0x01 );
+    PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2;
+    /* sounder control:  */
     if( (temp == 0) && (PORT2.PODR.BIT.B2 == 1) )
       hmi->snd_state_fb = 1;
-    /* PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2; */
+    break;
+    // middle
+  case OPMD_BAT_MID:
+    temp = PORT2.PODR.BIT.B2;
+    PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2;
+    /* sounder control: silent */
     break;
     // ordinal
   default:
+    
     PORT2.PODR.BIT.B2 = 0;    
     break;
   }
@@ -891,20 +903,20 @@ uint8_t HMISndFB( st_HMI *hmi ){
 
 
 uint8_t HMIFlash( st_HMI *hmi, st_hTx *htx ){
-  // every HMI_CYCLE_[IN:OUT] ms looping
+  // every HMI_CYCLE_[IN/OUT] ms looping
   if( IR( CMT1, CMI1 ) ){
     // LED loop
     /* PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2; */
     /* PORT3.PODR.BIT.B2 = !PORT3.PODR.BIT.B2; */
     HMILEDSetRGBMode( hmi, htx );
-    HMILEDBatLow( hmi, htx, 8 );
-    HMILEDPPMAct( hmi, htx, 4 );
+    HMILEDBatLow( hmi, htx, 50 );
+    HMILEDPPMAct( hmi, htx, 5 );
 
     // Sounder loop
     HMISndSeqGen( hmi, htx );
     HMISndFB( hmi );
 
-    // next frame
+    // clear for next frame
     IR( CMT1, CMI1 ) = 0;
   }
 }

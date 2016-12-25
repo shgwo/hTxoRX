@@ -32,28 +32,31 @@
 // ----------------------------------------------- Defines
 // state difinition for main operation
 enum enum_AppMode {
-  OPMD_BOOT,
+  OPMD_BOOT,  // app
   OPMD_DIAG,
   OPMD_SAFE,
   OPMD_RUN_INIT,
   OPMD_RUN,
   OPMD_FAIL,
-  OPMD_UNKNOWN
+  OPMD_UNKNOWN,
+  OPMD_N
 };
 enum enum_AppModeLog {
   OPMD_LOG_OFF,
   OPMD_LOG_ON
 };
 enum enum_AppModeBat {
-  OPMD_BAT_LOW,
-  OPMD_BAT_MID,
-  OPMD_BAT_FULL
+  OPMD_BAT_DEAD,  // deadly low
+  OPMD_BAT_LOW,   // low
+  OPMD_BAT_MID,   // middle
+  OPMD_BAT_FULL,  // full
+  OPMD_BAT_N
 };
 
 enum enum_UARTApp {
-  UART_MSP,
-  UART_IOA,
-  UART_TELEM,
+  UART_MSP,   // main
+  UART_IOA,   // Infotainment over air
+  UART_TELEM, // telemetry
   UART_N_APP
 };
 
@@ -61,7 +64,7 @@ enum enum_UARTApp {
 //#define UART_BRATE_MSP   9600
 #define UART_BRATE_IOA   115200
 #define UART_BRATE_TELEM 9600
-//sssssssssssssssssssss#define UART_BRATE_TELEM 4800
+//#define UART_BRATE_TELEM 4800
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs

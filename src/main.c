@@ -143,16 +143,16 @@ int main( void )
 
   // initializing PPM ch val ( * future func *)
   // Name labels for each PPM ch
-  char ppm_chname[PPM_N_CH][10] = { "Roll", "Pitch", "Throttle", "Yaw", "Arm", "AUX2", "FiteMD", "AUX4" };
+  char ppm_chname[PPM_N_CH][10] = { "Roll", "Pitch", "Throttle", "Yawe", "Arm", "AUX2", "FiteMD", "AUX4" };
   // set adj ( name str, ad_ch, inv, offset, gain )
-  PPMGenAdjInit( &ppm_adj[0], ppm_chname[0],  2, PPMADJ_NOINV,  (182 * 6), 1.0 ); // Roll
-  PPMGenAdjInit( &ppm_adj[1], ppm_chname[1],  3, PPMADJ_INV,    (162 * 6), 1.0 ); // Pitch
-  PPMGenAdjInit( &ppm_adj[2], ppm_chname[2],  0, PPMADJ_NOINV, -(114 * 6), 1.0 ); // Throttle
-  PPMGenAdjInit( &ppm_adj[3], ppm_chname[3],  1, PPMADJ_INV,    (783 * 6), 1.0 ); // Yaw
-  PPMGenAdjInit( &ppm_adj[4], ppm_chname[4], 22, PPMADJ_NOINV,          0, 1.0 ); // Arm
-  PPMGenAdjInit( &ppm_adj[5], ppm_chname[5], 22, PPMADJ_NOINV,          0, 1.0 ); // AUX2
-  PPMGenAdjInit( &ppm_adj[6], ppm_chname[6], 22, PPMADJ_NOINV,          0, 1.0 ); // FliteMD
-  PPMGenAdjInit( &ppm_adj[7], ppm_chname[7], 22, PPMADJ_NOINV,          0, 1.0 ); // AUX4
+  PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 132 * 6), 0.5 ); // Roll
+  PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 196 * 6), 0.5 ); // Pitch
+  PPMGenAdjInit( &ppm.adj[2], ppm_chname[2],  0, PPMADJ_NOINV, -( 224 * 6), 0.5 ); // Throttle
+  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 293 * 6), 0.5 ); // Yaw
+  PPMGenAdjInit( &ppm.adj[4], ppm_chname[4], 22, PPMADJ_NOINV,           0, 1.0 ); // Arm
+  PPMGenAdjInit( &ppm.adj[5], ppm_chname[5],  4, PPMADJ_NOINV,           0, 1.0 ); // AUX2
+  PPMGenAdjInit( &ppm.adj[6], ppm_chname[6], 22, PPMADJ_NOINV,           0, 1.0 ); // FliteMD
+  PPMGenAdjInit( &ppm.adj[7], ppm_chname[7], 22, PPMADJ_NOINV,           0, 1.0 ); // AUX4
 
   PPMGenStart();
   
@@ -162,7 +162,7 @@ int main( void )
   // Init
   uint8_t  status = 0, stat_ppm=0, div = 3;
   uint8_t  flag   = 0;
-  uint16_t ppm_val[8], adc_val[21], adc_bat = 0;
+  uint16_t ppm_val[8], adc_val[21], adc_bat = 0, adc_arm = 1000;
   uint8_t  mode_test = 0xAA;
   uint8_t  dbg = 0x00, dbg_in = 0x00, dbg_tgl = 0x00;
   uint8_t  dat_telem[SER_BUFF], test = 0x00, dbg_ioa[SER_BUFF];
@@ -238,81 +238,101 @@ int main( void )
 
     // get ADC val & arrange for PPM ch
     // future func => PPMGenInputSelector()
-    if( IR( S12AD, S12ADI0) == 1 ){
-      //adc_val[0] = (S12AD.ADDR2 >> (2 + 2) ) + (182 * 6); // Roll (old)
-      adc_val[0] = (uint16_t)( 1.0*(S12AD.ADDR2 >> (2 + 1) ) - (132 * 6) ); // Roll
-      //adc_val[1] = (S12AD.ADDR3 >> (2 + 2) ) + (162 * 6); // Pitch (old NINV)
-      //adc_val[1] = (~S12AD.ADDR3 >> (2 + 2) ) +(833 * 6); // Pitch (old)
-      adc_val[1] = (uint16_t)( 1.0*(~S12AD.ADDR3 >> (2 + 1) ) + (1168 * 6) ); // Pitch
-      //adc_val[2] = (S12AD.ADDR0 >> (2 + 2) ) - (114 * 6); // Throttle (old)
-      adc_val[2] = (uint16_t)( 1.0*(S12AD.ADDR0 >> (2 + 1) ) - (224 * 6) ); // Throttle (971 - 1932)
-      //adc_val[3] = (S12AD.ADDR1 >> (2 + 2) ) + (209 * 6); // Yaw (NINV)
-      //adc_val[3] = (~S12AD.ADDR1 >> (2 + 2) ) + (783 * 6); // Yaw (INV old)
-      adc_val[3] = (uint16_t)( 1.0*(~S12AD.ADDR1 >> (2 + 1) ) + (1069 * 6) ); // Yaw (INV)
-      adc_val[4] = 0;
-      adc_val[5] = 0;
-      adc_val[6] = (uint16_t)( 1.0*(S12AD.ADDR5 >> (2 + 1)) ); // AUX3
-      adc_val[7] = 0;
+    /* ADC12GetVal( &adc12 ); */
+    /* PPMGenInputFilter( &ppm, &adc12 ); */
+    /* /\* if( IR( S12AD, S12ADI0) == 1 ){ *\/ */
+    /*   //adc_val[0] = (S12AD.ADDR2 >> (2 + 2) ) + (182 * 6); // Roll (old) */
+    /*   /\* adc_val[0] = (uint16_t)( 1.0*(S12AD.ADDR2 >> (2 + 1) ) - (132 * 6) ); // Roll *\/ */
+    /*   adc_val[0] = (uint16_t)( 1.0*( adc12.data[2] >> (2 + 1) ) - (132 * 6) ); // Roll */
+    /*   //adc_val[1] = (S12AD.ADDR3 >> (2 + 2) ) + (162 * 6); // Pitch (old NINV) */
+    /*   //adc_val[1] = (~S12AD.ADDR3 >> (2 + 2) ) +(833 * 6); // Pitch (old) */
+    /*   /\* adc_val[1] = (uint16_t)( 1.0*(~S12AD.ADDR3 >> (2 + 1) ) + (1168 * 6) ); // Pitch *\/ */
+    /*   adc_val[1] = (uint16_t)( 1.0*( ~adc12.data[3] >> (2 + 1) ) + (1168 * 6) ); // Pitch */
+    /*   //adc_val[2] = (S12AD.ADDR0 >> (2 + 2) ) - (114 * 6); // Throttle (old) */
+    /*   /\* adc_val[2] = (uint16_t)( 1.0*(S12AD.ADDR0 >> (2 + 1) ) - (224 * 6) ); // Throttle (971 - 1932) *\/ */
+    /*   adc_val[2] = (uint16_t)( 1.0*( adc12.data[0] >> (2 + 1) ) - (224 * 6) ); // Throttle (971 - 1932) */
+    /*   //adc_val[3] = (S12AD.ADDR1 >> (2 + 2) ) + (209 * 6); // Yaw (NINV) */
+    /*   //adc_val[3] = (~S12AD.ADDR1 >> (2 + 2) ) + (783 * 6); // Yaw (INV old) */
+    /*   /\* adc_val[3] = (uint16_t)( 1.0*(~S12AD.ADDR1 >> (2 + 1) ) + (1069 * 6) ); // Yaw (INV) *\/ */
+    /*   adc_val[3] = (uint16_t)( 1.0*( ~adc12.data[1] >> (2 + 1) ) + (1069 * 6) ); // Yaw (INV) */
+    /*   adc_val[4] = 0; */
+    /*   adc_val[5] = 0; */
+    /*   /\* adc_val[6] = (uint16_t)( 1.0*(S12AD.ADDR5 >> (2 + 1)) ); // AUX3 *\/ */
+    /*   adc_val[6] = (uint16_t)( 1.0*( adc12.data[4] >> (2 + 1)) ); // AUX3 */
+    /*   adc_val[7] = 0; */
+
+
       
-      adc_bat = (S12AD.ADDR13 >> (2 + 0) );
-      IR( S12AD, S12ADI0 ) = 0;
-    }
+      /* adc_bat = (S12AD.ADDR13 >> (2 + 0) ); */
+      adc_bat = ( adc12.data[13] >> (2 + 0) );
+    /*   IR( S12AD, S12ADI0 ) = 0; */
+    /* } */
     // future func => PPMGenSafeChecker()  <- safe limiter
     // future func => PPMGenOutputFilter() <- LUT-base / Filt-matrix  conversion
     
     // battery check
     // series res Vbat = Vli2S * (3kOhm / 8kOhm)
-    // Vadc_max = 3.3, Vli_max = 8.8 V
+    //  => Vadc_max = 3.3, Vli_max = 8.8 V
     // define Li-ion Vmax:4.2*2 - Vmin: 3.2*2  = 2.0, 
-    // res_Vbat = 2.0 / 8.8 = 0.227 ~ 1/4
-    // Dad_min = 6.4 * 3/8 / 3.3 * 2^14 = 2.4 *k = 0.727 * 2^14 ~ 730 * 16 = 11680
-    // Dad_low = 7.2 * 3/8 / 3.3 * 2^14 = 2.7 *k = 1.1  * 11680  = 12848
-    // Dad_mid = 8.0 * 3/8 / 3.3 * 2^14 = 3.0 *k = 1.25 * 11680 = 14600
-    // Dad_max = 8.4 * 3/8 / 3.3 * 2^14 = 3.15*k = 0.957 * 2^14 ~ 960 * 16 = 15360
-    if( adc_bat < 12900 ){
+    // res_Vbat = 2.0 / 8.8 = 0.227 ~ 1/4 of adc resolution
+    // Dad_min = 6.4 * 3/8 / 3.3 * 2^14 = 2.4 *k = 0.727 * 2^14 ~ 730 * 16 = 11915
+    // Dad_low = 7.2 * 3/8 / 3.3 * 2^14 = 2.7 *k = 1.1  * 11680 = 13405
+    // Dad_mid = 7.4 * 3/8 / 3.3 * 2^14 = 3.0 *k = 1.16 * 11680 = 13777
+    // Dad_hgh = 8.0 * 3/8 / 3.3 * 2^14 = 3.0 *k = 1.25 * 11680 = 14894
+    // Dad_max = 8.4 * 3/8 / 3.3 * 2^14 = 3.15*k = 0.957 * 2^14 ~ 960 * 16 = 15640
+    if( adc_bat < 12000 ){
+      htx.opmd_bat = OPMD_BAT_DEAD;
+    }else if( adc_bat < 13400 ){
       htx.opmd_bat = OPMD_BAT_LOW;
-    /* }else if( adc_bat < 14600 ){ */
     }else if( adc_bat < 14000 ){
       htx.opmd_bat = OPMD_BAT_MID;
     }else{
       htx.opmd_bat = OPMD_BAT_FULL;
     }
-
+    
     // Motors disarming check
-    //    adc_val[4] = (PORTE.PIDR.BIT.B7 ? 0 : 2049);
-    adc_val[4] = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (200 * 6) );
+    adc_val[4] = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (250 * 6) );
     if( htx.opmd != OPMD_RUN ){
       adc_val[2] = 0; // Throttle
     }
+    adc_arm = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (250 * 6) );
+    PPMGenSetVal( &ppm, 4, adc_arm );
+    // Throttle control
+    if( htx.opmd != OPMD_RUN ){ PPMGenSetVal( &ppm, 2, 0 ); }
 
     // PPM generation core
     // future func => PPMGen()
-    // PPMGen( st_PPM );
-    // check tpu renew timing from interrupt occurance flag
-    if( IR( TPU3, TGI3A ) == 1 ){
-      // tail pulse
-      if( TPU3.TGRA > (400 * 6) ){
-	TPU3.TGRC = (300 * 6);
-	status++;
-	if( status > 8 ){ status = 0; }
-      }
-      // ppm pulse
-      else{
-	// end pulse
-	if( status >= 8 ){
-	  TPU3.TGRC = (6200 * 6);
-	  hmi.ppm_cnt++;
-	  // debug
-	  PORTA.PODR.BIT.B0 = !PORTA.PODR.BIT.B0;
-	}
-	// significant pulse
-	else{
-	  TPU3.TGRC = (700 * 6) + adc_val[status];
-	}
-      }
-      IR( TPU3, TGI3A ) = 0;
-      PORTJ.PODR.BIT.B3 = !PORTJ.PODR.BIT.B3;
-    }
+    PPMGen( &ppm, &adc12 );
+    hmi.ppm_cnt = ppm.cnt_end;
+    /* adc_val[0] = ppm.data[0]; // Roll */
+    /* adc_val[1] = ppm.data[1]; // Pitch */
+    /* adc_val[2] = ppm.data[2]; // Throttle */
+    /* adc_val[3] = ppm.data[3]; // Yaw */
+    /* // check tpu renew timing from interrupt occurance flag */
+    /* if( IR( TPU3, TGI3A ) == 1 ){ */
+    /*   // tail pulse */
+    /*   if( TPU3.TGRA > (400 * 6) ){ */
+    /* 	TPU3.TGRC = (300 * 6); */
+    /* 	status++; */
+    /* 	if( status > 8 ){ status = 0; } */
+    /*   } */
+    /*   // ppm pulse */
+    /*   else{ */
+    /* 	// end pulse */
+    /* 	if( status >= 8 ){ */
+    /* 	  TPU3.TGRC = (6200 * 6); */
+    /* 	  hmi.ppm_cnt++; */
+    /* 	  // debug */
+    /* 	  PORTA.PODR.BIT.B0 = !PORTA.PODR.BIT.B0; */
+    /* 	} */
+    /* 	// significant pulse */
+    /* 	else{ */
+    /* 	  TPU3.TGRC = (700 * 6) + adc_val[status]; */
+    /* 	} */
+    /*   } */
+    /*   IR( TPU3, TGI3A ) = 0; */
+    /*   PORTJ.PODR.BIT.B3 = !PORTJ.PODR.BIT.B3; */
+    /* } */
 
     // Back gound processes (UART)
     SerDaemon( &ser[UART_MSP] );
@@ -445,7 +465,7 @@ int main( void )
       dbgDispLED( test );
     }
     else{
-      unsigned char test = ( S12AD.ADDR5 >> 12 );
+      unsigned char test = ( S12AD.ADDR4 >> 12 );
       dbgDispLED( test );
 
       //PORTA.PODR.BYTE = i++ & (1 << 0 | 1 << 1 | 1 << 2 | 1 << 6);

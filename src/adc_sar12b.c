@@ -12,7 +12,7 @@
 
 uint8_t ADC12PortInit( void ){
   // ADC input (Gimbal stick input)
-  // P4 -> ADC input from potentio meters in stick gimbal (Vref 3.3V)
+  // P4 -> ADC input from potentional meters in stick gimbal (Vref 3.3V)
   /* PortConfADC( MPC.P40PFS, ASEL_ON, ISEL_OFF, PORT4, 0, PMR_FUNC, PDR_IN, 0 ); */
   /* PortConfADC( MPC.P41PFS, ASEL_ON, ISEL_OFF, PORT4, 1, PMR_FUNC, PDR_IN, 0 ); */
   /* PortConfADC( MPC.P42PFS, ASEL_ON, ISEL_OFF, PORT4, 2, PMR_FUNC, PDR_IN, 0 ); */
@@ -21,12 +21,16 @@ uint8_t ADC12PortInit( void ){
   PORT4.PDR.BIT.B1 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT4.PDR.BIT.B2 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT4.PDR.BIT.B3 = PDR_IN;         // PDR_IN / PDR_OUT
+  PORT4.PDR.BIT.B4 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT4.PDR.BIT.B5 = PDR_IN;         // PDR_IN / PDR_OUT
+  PORTD.PDR.BIT.B5 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT4.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B2 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B3 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
+  PORT4.PMR.BIT.B4 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B5 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
+  PORTD.PMR.BIT.B5 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
 
   return( 0 );
 }
@@ -35,11 +39,11 @@ uint8_t ADC12FuncInit( void ){
   // ADC setting (to do: librarize setting process)
   S12AD.ADCSR.BIT.ADST  = ADST_STOP;   // ADST_START / ADST_STOP
   // scan ch setting ( ch select, addition )
-  S12AD.ADANS0.WORD     = 0x202F;   // (b0010 0000 0010 1111) AN015 - AN000
+  S12AD.ADANS0.WORD     = 0x203F;   // (b0010 0000 0011 1111) AN015 - AN000
   S12AD.ADANS1.WORD     = 0x0000;   // (b---- ---- ---0 0000) AN020 - AN016,
                                     //   |----> "-" is fixed value as 0 
   S12AD.ADADC.BIT.ADC   = ADADC_X4;   // ADADC_X1 / ADADC_X2 / ADADC_X3 / ADADC_X4
-  S12AD.ADADS0.WORD     = 0x202F;   // (b0010 0000 0010 1111) AN015 - AN000
+  S12AD.ADADS0.WORD     = 0x203F;   // (b0010 0000 0011 1111) AN015 - AN000
   S12AD.ADADS1.WORD     = 0x0000;   // (b---- ---- ---0 0000) AN020 - AN016,
                                     //   |----> "-" is fixed value as 0
   // ADC config
@@ -58,21 +62,27 @@ uint8_t ADC12FuncInit( void ){
 
   // switch IO to peripheral func.
   MPC.P40PFS.BIT.ISEL  = ISEL_OFF;
-  MPC.P40PFS.BIT.ASEL  = ASEL_ON;
+  MPC.P40PFS.BIT.ASEL  = ASEL_ON;   // AN000
   MPC.P41PFS.BIT.ISEL  = ISEL_OFF;
-  MPC.P41PFS.BIT.ASEL  = ASEL_ON;
+  MPC.P41PFS.BIT.ASEL  = ASEL_ON;   // AN001
   MPC.P42PFS.BIT.ISEL  = ISEL_OFF;
-  MPC.P42PFS.BIT.ASEL  = ASEL_ON;
+  MPC.P42PFS.BIT.ASEL  = ASEL_ON;   // AN002
   MPC.P43PFS.BIT.ISEL  = ISEL_OFF;
-  MPC.P43PFS.BIT.ASEL  = ASEL_ON;
+  MPC.P43PFS.BIT.ASEL  = ASEL_ON;   // AN003
+  MPC.P44PFS.BIT.ISEL  = ISEL_OFF;
+  MPC.P44PFS.BIT.ASEL  = ASEL_ON;   // AN004
   MPC.P45PFS.BIT.ISEL  = ISEL_OFF;
-  MPC.P45PFS.BIT.ASEL  = ASEL_ON;
+  MPC.P45PFS.BIT.ASEL  = ASEL_ON;   // AN005
+  MPC.PD5PFS.BIT.ISEL  = ISEL_OFF;
+  MPC.PD5PFS.BIT.ASEL  = ASEL_ON;   // AN013
   PORT4.PMR.BIT.B0 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B1 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B2 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B3 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+  PORT4.PMR.BIT.B4 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   PORT4.PMR.BIT.B5 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
-  
+  PORTD.PMR.BIT.B4 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
+  PORTD.PMR.BIT.B5 = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
   return( 0 );
 }
 
@@ -147,6 +157,7 @@ uint8_t ADC12GetVal( st_ADC12 *adc12 ){
     adc12->data[19] = S12AD.ADDR19;
     adc12->data[20] = S12AD.ADDR20;
 
+    // clear for next cycle
     IR( S12AD, S12ADI0 ) = 0;
   }
   

@@ -1,0 +1,103 @@
+  151  wget http://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.bz2
+  152  wget http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-5.4.0/gcc-5.4.0.tar.bz2
+  156  mkdir pack161029
+  158  cd pack161029/
+  160  wget https://gmplib.org/download/gmp/gmp-6.1.1.tar.lz
+  161  wget http://www.mpfr.org/mpfr-current/mpfr-3.1.5.tar.bz2
+  162  wget ftp://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz
+  164  mv ../gcc-5.4.0.tar.bz2 ./
+  165  mv ../binutils-2.27.tar.bz2 ./
+  173  sudo ~/startup_packages.sh
+  177  tar xvfj binutils-2.27.tar.bz2 
+  179  cd binutils-2.27/
+  181  ./configure --target=rx-elf --prefix=/usr/local
+  182  make
+  183  make clean
+  184* ./configure --target=rx-elf --prefix=/usr/local/rx-elf
+  185  make
+  186  make install
+  187  sudo make install
+  188  ls
+  189  cd ..
+  190  ls
+  191  tar xvfz gmp-6.1.1.tar.lz 
+  192  lzh
+  193  fg
+  194  sudo ~/startup_packages.sh
+  195  ls
+  196  tar xvf --lzip gmp-6.1.1.tar.lz 
+  197  tar --lzip xvf gmp-6.1.1.tar.lz 
+  198  tar lzip xvf gmp-6.1.1.tar.lz 
+  199  tar xvflz gmp-6.1.1.tar.lz 
+  200  wget https://gmplib.org/download/gmp/gmp-6.1.1.tar.bz2
+  201  ls
+  202  rm gmp-6.1.1.tar.lz
+  203  ls
+  204  tar xvfz gmp-6.1.1.tar.bz2 
+  205  tar xvfj gmp-6.1.1.tar.bz2 
+  206  ls
+  207  cd gmp-6.1.1/
+  208  ls
+  209  ./configure
+  210  make
+  211  sudo make install
+  212  make check
+  213  cd ..
+  214  ls
+  215  tar xvff mpfr-3.1.5.tar.bz2 
+  216  tar xvfj mpfr-3.1.5.tar.bz2 
+  217  cd mpfr-3.1.5/
+  218  ls
+  219  ./configure --with-gmp=/usr/local
+  220  make
+  221  ls /usr/local/bin/
+  222  ls
+  223  sudo make install
+  224  cd ..
+  225  ls
+  226  tar xvfz mpc-1.0.3.tar.gz 
+  227  cd mpc-1.0.3/
+  228  ls
+  229  ./configure --with-gmp=/usr/local
+  230  make
+  231  sudo make install
+  232  cd ..
+  233  ls
+  234  tar xvfj gcc-5.4.0.tar.bz2 
+  235  cd gcc-5.4.0/
+  236  ls
+  237  mkdir build
+  238  ls
+  239  cd build/
+  240  ls
+  241  cd ..
+  242  rmdir build/
+  243  cd ..
+  244  ls
+  245  build_gcc-5.4.0
+  246  mkdir build_gcc-5.4.0
+  247  cd build_gcc-5.4.0/
+  248  ls
+  249  ../gcc-5.4.0/configure --prefix=/usr/local/rx-elf --target=rx-elf --with-gmp=/usr/local --disable-libssp --enable-languages=c
+  250  make
+  251  sudo make install
+  252  ls
+  253  cd ..
+  254  ls
+  255  cd ~/hTxoRX_nonIR
+  256  ls
+  257  make
+  258  make clean
+  259  make
+  260  less Makefile 
+  261  ls
+  262  cd ~/dev/cross/
+  263  ls
+  264  cd RX/build161029/
+  265  ls
+  266  cd ../
+  267  sl
+  268  cd pack161029/
+  269  ls
+  270  history
+  271  history > log
