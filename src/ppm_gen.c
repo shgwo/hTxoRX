@@ -5,31 +5,6 @@
 
 #define PPMGEN_PNUM 8
 
-uint8_t PPMGenAdjInit( struct st_PPMAdj *ppm_adj , char *name, uint8_t ch_adc, enum enum_PPMADJModeInv inv, uint16_t offset, double gain){
-  int i;
-  // copy name
-  for( i=0 ; i < 10 ; i++ ){
-    ppm_adj->name[i] = name[i];
-  }
-  // unlock data
-  ppm_adj->lock   = PPMADJ_UNLOCK;
-  // set ad_ch
-  ppm_adj->ch_adc = ch_adc;
-  // set invert
-  ppm_adj->invert = inv;
-  // set offset
-  ppm_adj->offset = offset;
-  // set gain
-  ppm_adj->gain   = gain;
-  
-  return(0);
-}
-
-
-
-uint8_t PPMGenAdjInitAll( struct st_PPMAdj *ppm_adj , char *name, uint8_t ch_adc, enum enum_PPMADJModeInv inv, uint16_t offset, double gain){
-  return(0);
-}
 
 uint8_t PPMGenPortInit_RX63N( void ){
   // P21 -> PPM output (3.3V pulse out)
@@ -82,9 +57,30 @@ uint8_t PPMGenConf_RX63N( void ){
   return( 0 );
 }
 
-uint8_t PPMGenSetVal( struct st_PPM *ppm, uint8_t ch, uint16_t val ){
-  ppm->data[ch] = val;
+uint8_t PPMGenAdjInit( struct st_PPMAdj *ppm_adj , char *name, uint8_t ch_adc, enum enum_PPMADJModeInv inv, uint16_t offset, double gain){
+  int i;
+  // copy name
+  for( i=0 ; i < 10 ; i++ ){
+    ppm_adj->name[i] = name[i];
+  }
+  // unlock data
+  ppm_adj->lock   = PPMADJ_UNLOCK;
+  // set ad_ch
+  ppm_adj->ch_adc = ch_adc;
+  // set invert
+  ppm_adj->invert = inv;
+  // set offset
+  ppm_adj->offset = offset;
+  // set gain
+  ppm_adj->gain   = gain;
+  
+  return(0);
+}
 
+
+uint8_t PPMGenSetVal( struct st_PPM *ppm, uint8_t ch, uint16_t val ){
+  ppm->adj[ch].lckdat = val;
+  ppm->adj[ch].lock   = PPMADJ_LOCK;
   return( 0 );
 }
 
@@ -144,24 +140,32 @@ uint8_t PPMGenStart( void ){
 }
 
 uint8_t PPMGenInputFilter( st_PPM *ppm, st_ADC12 *adc12 ){
-    // temp values
-    uint16_t dat_tmp = 0;
-    uint8_t  ch_adc = 0;
-    double   gain   = 1.0;
-    uint16_t off    = 0;
-    uint16_t inv    = 0;
-
+  // temp values ( adj. default, for safety )
+  uint16_t dat_tmp = 0;
+  uint8_t  ch_adc = 0;
+  double   gain   = 0.2;
+  uint16_t off    = 0;
+  uint16_t inv    = 0;
+  
+  //for all ch.s
   for( uint8_t i=0 ; i<PPM_N_CH ; i++ ){
-    dat_tmp = 0;
-    ch_adc  = ppm->adj[i].ch_adc;
-    gain    = ppm->adj[i].gain;
-    off     = ppm->adj[i].offset;
-    inv     = ppm->adj[i].invert;
-    // invert & shifting ( inv/not inv, flush-left 14bit -> flush-right 14bit)
-    dat_tmp = ( inv ? ( (~adc12->data[ch_adc] >> 2) & 0x3FFF ) : ( (adc12->data[ch_adc] >> 2) & 0x3FFF )  );
-    //    dat_tmp = 0x0000;
-    // linear adjustment ( gradient & intercept )
-    ppm->data[i] = (uint16_t)( gain * dat_tmp + off );
+    if( ppm->adj[i].lock == PPMADJ_LOCK ){
+      // data force
+      ppm->data[i] = (uint16_t)( ppm->adj[i].lckdat );
+      ppm->adj[i].lock = PPMADJ_UNLOCK;
+    }else{
+      // normal filer routine
+      dat_tmp = 0;
+      ch_adc  = ppm->adj[i].ch_adc;
+      gain    = ppm->adj[i].gain;
+      off     = ppm->adj[i].offset;
+      inv     = ppm->adj[i].invert;
+      // invert & shifting ( inv/not inv, flush-left 14bit -> flush-right 14bit)
+      dat_tmp = ( inv ? ( (~adc12->data[ch_adc] >> 2) & 0x3FFF ) : ( (adc12->data[ch_adc] >> 2) & 0x3FFF )  );
+      //    dat_tmp = 0x0000;
+      // linear adjustment ( gradient & intercept )
+      ppm->data[i] = (uint16_t)( gain * dat_tmp + off );
+    }
   }
   return (0);
 }

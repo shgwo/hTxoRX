@@ -8,17 +8,19 @@
 // -------------------------------------------------------
 // ------------------------------------------------- Info.
 //
-//  Description:   Relative utilities for PPM generation
+//  Description:   Relative utilities for UART comm.
 //
 //  Author:        S.Nakamura (shgwo)
 //
-//  Ver.:          0.1
-//  last updated : 2016.07.06
+//  Ver.:          0.2
+//  last updated : 2017.01.09
 //
 //  history:
-//    2016.07.06  create for RX63N( GR-SAKURA ) base-system
-//    2016.04.16  add codes to operate TPU & ADC w/ synccronization
-//                (interrupt codes are not included yet..) 
+//    2016.06.XX  create for RX63N( GR-SAKURA ) base-system
+//                add codes to use as debug com (via FT232)
+//    2016.09.XX  add codes to receive frsky telemetry data
+//    2016.11.XX  add codes to comm w/ BT module
+//    2017.01.09  code cleaning
 //
 #ifndef __SERIAL_H__
 #define __SERIAL_H__
@@ -35,6 +37,17 @@
 // ----------------------------------------------- Defines
 // SFR definition
 #define SCI0_SSR    (*(volatile struct st_sci0_ssr    *)0x0008A004)
+#define SCI1_SSR    (*(volatile struct st_sci0_ssr    *)0x0008A024)
+#define SCI2_SSR    (*(volatile struct st_sci0_ssr    *)0x8A044)
+#define SCI3_SSR    (*(volatile struct st_sci0_ssr    *)0x8A064)
+#define SCI4_SSR    (*(volatile struct st_sci0_ssr    *)0x8A084)
+#define SCI5_SSR    (*(volatile struct st_sci0_ssr    *)0x8A0A4)
+#define SCI6_SSR    (*(volatile struct st_sci0_ssr    *)0x8A0C4)
+#define SCI7_SSR    (*(volatile struct st_sci0_ssr    *)0x8A0E4)
+#define SCI8_SSR    (*(volatile struct st_sci0_ssr    *)0x8A104)
+#define SCI9_SSR    (*(volatile struct st_sci0_ssr    *)0x8A124)
+#define SCI10_SSR   (*(volatile struct st_sci0_ssr    *)0x8A144)
+#define SCI11_SSR   (*(volatile struct st_sci0_ssr    *)0x8A164)
 #define SCI12_SSR   (*(volatile struct st_sci0_ssr    *)0x0008B304)
 
 // label definition for HMI input source
@@ -79,17 +92,17 @@ enum enum_SER_ERR {
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
 typedef struct st_SerialErr {
-  struct st_sci0_ssr *addr_stat_base;
+  struct st_sci0_ssr *addr_base_stat;
   uint8_t err[SER_N_ERR];
 } st_SerialErr;
 
 typedef struct st_Serial {
-  struct st_sci0 *addr_base;
-  struct st_sci0_ssr *addr_stat_base;
-  struct st_icu  *addr_irq_base;
-  uint8_t vec_base;
-  uint8_t stat[SER_N_STAT];    // <= too big. omit??
-  uint8_t stat_err[SER_N_ERR]; // <= too big. omit??
+  struct st_sci0     *addr_base;
+  struct st_sci0_ssr *addr_base_stat;
+  struct st_icu      *addr_base_irq;
+  uint8_t             vec_base;
+  /* uint8_t stat[SER_N_STAT];    // <= too big. omit */
+  /* uint8_t stat_err[SER_N_ERR]; // <= too big. omit */
   // for receive
   uint8_t tx_stat;
   uint8_t tx_buff[SER_BUFF];
@@ -120,6 +133,7 @@ extern uint8_t SerWriteTest( st_Serial*, uint8_t );
 /* extern uint8_t SerReadBG( st_Serial* ); */
 extern uint8_t SerRead( st_Serial* );
 extern uint8_t SerBytesRead( st_Serial*, uint8_t* );
+extern uint8_t SerReadable( st_Serial* );
 extern uint8_t SerReadTest( st_Serial* );
 extern uint8_t SerDaemon( st_Serial* );
 

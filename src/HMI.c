@@ -9,27 +9,34 @@
 //
 //  HMI utilities 
 //
-//  for 
+//  for HMI input loop timer
 uint8_t HMISysInTmrInit( void ){
   // CMT0 setting (for HMI input time loop)
-  // td_in = 1ms (=1kHz); 12MHz * 4 / 2^9 / 2^(1+5)
-  CMT0.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK/512;
-  CMT0.CMCOR = 0x001F;                   // PCLK / 2^9 / 2^5;
+  // td_in = 1ms; 1kHz = 12MHz * 2^2 / 2^9 / {2^(1+5)}
+  //                   =  3MHz * 2^4 / 2^9 / {~93}
+  CMT0.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK / 512
+  CMT0.CMCOR = 0x005C;                   // PCLK / 2^9 / 93 (0to92)
   CMT0.CMCR.BIT.CMIE = CMIE_EN;          // interrupt flag enable
   IEN( CMT0, CMI0 ) = 0;
   IPR( CMT0, CMI0 ) = 7;
+  // start input HMI loop clock  
+  CMT.CMSTR0.BIT.STR0 = CMSTRn_RUN;       // CMT_[RUN / STOP]
 }
 
-uint8_t HMISysOutTmrInit( void ){
-  // CMT0 setting (for HMI output time loop)
-  // td_out = 10ms (=100fps); 12MHz * 2^2 / 2^9 / 2^(1+2+7)
-  CMT1.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK/512;
-  CMT1.CMCOR = 0x03FF;                   // PCLK / 2^9 / 2^10;
+//  for HMI loop timer
+uint8_t HMISysTmrInit( void ){
+  // CMT1 setting (for HMI output time loop)
+  // case1: td_in  = 1ms,  1kHz  = 12MHz * 2^2 / 2^9 / {~2^(1+5)}
+  //                             =  3MHz * 2^4 / 2^9 / {~93}
+  // case2: td_out = 10ms, 100Hz = 12MHz * 2^2 / 2^9 / {~2^(1+2+7)}
+  //                             =  3MHz * 2^4 / 2^9 / {~937}
+  CMT1.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK / 512;
+  CMT1.CMCOR = 0x005C;                   // PCLK / 2^9 / 93 (0to92)
+  /* CMT1.CMCOR = 0x03A9;                   // PCLK / 2^9 / 937 (0t0936) */
   CMT1.CMCR.BIT.CMIE = CMIE_EN;          // interrupt flag enable
   IEN( CMT1, CMI1 ) = 0;
   IPR( CMT1, CMI1 ) = 8;
-  // start all HMI loop clock
-  CMT.CMSTR0.BIT.STR0 = CMSTRn_RUN;       // CMT_[RUN / STOP]
+  // start output HMI loop clock
   CMT.CMSTR0.BIT.STR1 = CMSTRn_RUN;       // CMT_[RUN / STOP]
 }
 
@@ -37,20 +44,20 @@ uint8_t HMIPortInInit( void ){
   // PE[0:1] -> Arm SW input
   // ( PE6: SW [ ARM ] (ON),  ON-OFF-(ON) )
   //   PE7: SW [ ARM ] ON,    ON-OFF-(ON) )
-  PORTE.PCR.BIT.B6 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTE.PCR.BIT.B7 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
+  PORTE.PCR.BIT.B6 = PCR_PULLUP;     // PCR_OPEN / PCR_PULLUP
+  PORTE.PCR.BIT.B7 = PCR_PULLUP;     // PCR_OPEN / PCR_PULLUP
   PORTE.PDR.BIT.B6 = PDR_IN;         // PDR_IN / PDR_OUT
   PORTE.PDR.BIT.B7 = PDR_IN;         // PDR_IN / PDR_OUT
   PORTE.PMR.BIT.B6 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTE.PMR.BIT.B7 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   
   // P1[2,4:5] -> Rotary encoder input
-  // ( P12: SW [ KEY ]   ,   )
-  //   P16: SW [ ROT_C ] ,   )
-  //   P17: SW [ ROT_D ] ,   )
-  PORT1.PCR.BIT.B2 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORT1.PCR.BIT.B6 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORT1.PCR.BIT.B7 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
+  // ( P12: SW [ KEY ]   ,  (ON) on rotary encoder )
+  //   P16: SW [ ROT_C ] ,  CW on RE  )
+  //   P17: SW [ ROT_D ] ,  CCW on RE  )
+  PORT1.PCR.BIT.B2 = PCR_PULLUP;     // PCR_OPEN / PCR_PULLUP
+  PORT1.PCR.BIT.B6 = PCR_PULLUP;     // PCR_OPEN / PCR_PULLUP
+  PORT1.PCR.BIT.B7 = PCR_PULLUP;     // PCR_OPEN / PCR_PULLUP
   PORT1.PDR.BIT.B2 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT1.PDR.BIT.B6 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT1.PDR.BIT.B7 = PDR_IN;         // PDR_IN / PDR_OUT
@@ -68,10 +75,9 @@ uint8_t HMIPortInInit( void ){
   /* PORT1.PMR.BIT.B5 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC */
   
   // PC[0:1], P5[0:1] -> reserved SW input
-  // ( P52: SW #0 [ LeftLeft ]  (ON) on rotary encoder
-  //   P50: SW #1 [ Left ]      tail
-  //   P51: SW #1 [ Left ]      head
-  //   PC0: SW #2 [ Left mid ]  (ON)
+  // ( P52: SW #0 [ LeftLeft ]  head
+  //   P51: SW #1 [ Left ]      tail
+  //   P50: SW #1 [ Left ]      (ON)
   //   PC1: SW #2 [ Left mid ]  ON
   //   PE0: SW #3 [ Right mid ] 
   //   PE3: SW #3 [ Right mid ] 
@@ -80,7 +86,6 @@ uint8_t HMIPortInInit( void ){
   PORT5.PCR.BIT.B0 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
   PORT5.PCR.BIT.B1 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
   PORT5.PCR.BIT.B2 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
-  PORTC.PCR.BIT.B0 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
   PORTC.PCR.BIT.B1 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
   PORTE.PCR.BIT.B0 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
   PORTE.PCR.BIT.B3 = PCR_PULLUP;         // PCR_OPEN / PCR_PULLUP
@@ -89,7 +94,6 @@ uint8_t HMIPortInInit( void ){
   PORT5.PDR.BIT.B0 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT5.PDR.BIT.B1 = PDR_IN;         // PDR_IN / PDR_OUT
   PORT5.PDR.BIT.B2 = PDR_IN;         // PDR_IN / PDR_OUT
-  PORTC.PDR.BIT.B0 = PDR_IN;         // PDR_IN / PDR_OUT
   PORTC.PDR.BIT.B1 = PDR_IN;         // PDR_IN / PDR_OUT
   PORTE.PDR.BIT.B0 = PDR_IN;         // PDR_IN / PDR_OUT
   PORTE.PDR.BIT.B3 = PDR_IN;         // PDR_IN / PDR_OUT
@@ -98,7 +102,6 @@ uint8_t HMIPortInInit( void ){
   PORT5.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORT5.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORT5.PMR.BIT.B2 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORTC.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTC.PMR.BIT.B1 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTE.PMR.BIT.B0 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
   PORTE.PMR.BIT.B3 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
@@ -108,7 +111,7 @@ uint8_t HMIPortInInit( void ){
 }
 
 uint8_t HMIPortInFuncInit( void ){
-  // TPU settings ( for Rrotary encoder phase couni )
+  // TPU settings ( for Rrotary encoder phase count )
   /* MTU.TSTR.BIT.CST1    = CSTn_STOP;           // stop: TPU2 */
   /* MTU1.TCR.BIT.CCLR    = CCLR_TGRB;           // TCNT cleared by TGRB */
   /* MTU1.TGRB    = 0x00FF;                      //  (TGRB = FF) */
@@ -122,8 +125,8 @@ uint8_t HMIPortInFuncInit( void ){
   /* PORT1.PMR.BIT.B7     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC   */
   
   // P14, P15 Phase counting mode
-  // MTU2a settings ( for Rrotary encoder phase couni )
-  // TPU 2 settings ( for Rrotary encoder phase couni )
+  // MTU2a settings ( for Rrotary encoder phase count )
+  // TPU 2 settings ( for Rrotary encoder phase count )
   /* MTU.TSTR.BIT.CST1    = CSTn_STOP;           // stop: MTU4 */
   /* MTU1.TCR.BIT.CCLR    = CCLR_TGRB;           // TCNT cleared by TGRB */
   /* MTU1.TGRB    = 0x00FF;                      //  (TGRB = FF) */
@@ -247,7 +250,7 @@ uint8_t HMIPortOutFuncLEDExtInit( ){
 
 uint8_t HMILEDExtInit( struct st_HMI *hmi ){
   // Timer driver initialize
-  HMISysOutTmrInit();
+  HMISysTmrInit();
   // Port & Func module driver initialization
   HMIPortOutLEDExtInit();
   HMIPortOutFuncLEDExtInit();
@@ -276,9 +279,11 @@ uint8_t HMILEDExtInit( struct st_HMI *hmi ){
 
 uint8_t HMIPortOutSndInit( void ){
   // P13 -> Buzzer ( Buzzer extention board )
+  // init port set (safety)
   PORT1.PODR.BIT.B3  = 1;
-  PORT1.PMR.BIT.B3 = PMR_GPIO;       // PMR_GPIO / PMR_FUNC
-  PORT1.PDR.BIT.B3 = PDR_OUT;        // PDR_IN / PDR_OUT
+  PORT1.PMR.BIT.B3   = PMR_GPIO;   // PMR_GPIO / PMR_FUNC
+  PORT1.PDR.BIT.B3   = PDR_OUT;    // PDR_IN / PDR_OUT
+  // func port set (main)
   MPC.P13PFS.BIT.PSEL  = P13PFS_MTIOC0B;
   MPC.P13PFS.BIT.PSEL  = P13PFS_TIOCA5;
   PORT1.PMR.BIT.B3     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
@@ -296,21 +301,22 @@ uint8_t HMIPortOutFuncSndInit( ){
   TPU5.TMDR.BIT.BFB    = TMDR_BFx_NORM;         // normal operation
   TPU5.TMDR.BIT.ICSELB = TPU_ICSELB_TIOCBn;     // ch B (unused)
   TPU5.TMDR.BIT.ICSELD = TPU_ICSELD_TIOCDn;     // ch D (unused)
-  TPU5.TIOR.BIT.IOA    = IOX_OHCL;                // PWM1 duty
-  TPU5.TIOR.BIT.IOB    = IOX_OHCH;                // PWM1 cycle
+  TPU5.TIOR.BIT.IOA    = IOX_OHCL;              // PWM1 duty
+  TPU5.TIOR.BIT.IOB    = IOX_OHCH;              // PWM1 cycle
   TPU5.TIER.BIT.TGIEA  = TGIEX_DE;              // IRQ disable
-  TPU5.TIER.BIT.TTGE   = TTGE_DE;               // enable: ADC start
+  TPU5.TIER.BIT.TTGE   = TTGE_DE;               // disable: no ADC sync
   return( 0 );
 }
 
 uint8_t HMISndInit( st_HMI *hmi ){
+  // vars initialize
   hmi->snd_state_seq = 0;
   hmi->snd_point_seq = 0;
   hmi->snd_cnt_tempo = 0;
   hmi->snd_state_fb  = 0;
   hmi->snd_cnt_fb    = 0;
   // Timer driver initialize
-  HMISysOutTmrInit();
+  HMISysTmrInit();
   // Sounder driver initialize
   HMIPortOutSndInit();
   HMIPortOutFuncSndInit();
@@ -331,7 +337,7 @@ uint8_t HMISndInit( st_HMI *hmi ){
 //  for Inputs
 uint8_t HMISWInit( st_HMI *hmi){
   // Timer driver initialize
-  HMISysInTmrInit();
+  HMISysTmrInit();
   // Switch input driver initialize
   HMIPortInInit();
   HMIPortInFuncInit();
@@ -347,7 +353,7 @@ uint8_t HMISWInit( st_HMI *hmi){
 
 uint8_t HMIScanSW ( st_HMI *hmi ){
   // scan all input channels
-  if( IR( CMT0, CMI0 ) ){
+  if( IR( CMT1, CMI1 ) ){
     // for debg
     /* hmi->dbg_cnt++; */
     /* if( (hmi->dbg_cnt >> 9) & 0x0001 ){ */
@@ -396,9 +402,10 @@ uint8_t HMIScanSW ( st_HMI *hmi ){
 	//	  hmi->sw_cnt[i]--;
       }
     }
-    
+
+    hmi->cnt_cyc_out++;
     // set rescan
-    IR( CMT0, CMI0 ) = 0;
+    IR( CMT1, CMI1 ) = 0;
   }
     return( 0 );
 }
@@ -433,11 +440,11 @@ uint8_t HMILongPress( st_HMI *hmi, enum enum_HMI_SW n_sw, uint16_t time ){
 uint8_t HMILEDPPMAct( st_HMI *hmi, st_hTx *htx, uint8_t div){
   // PPM active indicator
   if( htx->opmd_log == OPMD_LOG_ON ){
-    PORT2.PODR.BIT.B3 = ( (hmi->ppm_cnt >> div) & 0x01 );
+    PORT2.PODR.BIT.B3 = ( (hmi->cnt_ppm >> div) & 0x01 );
     PORT3.PODR.BIT.B3 = 0;
   }else{
     PORT2.PODR.BIT.B3 = 0;
-    PORT3.PODR.BIT.B3 = ( (hmi->ppm_cnt >> div) & 0x01 );
+    PORT3.PODR.BIT.B3 = ( (hmi->cnt_ppm >> div) & 0x01 );
   }
   return( 0 );
 }
@@ -586,7 +593,7 @@ uint8_t HMISndSetPitch( st_HMISnd *snd ){
   // requirements: time resolution none ( in situ )
   // calc freq:  12M * 4 / 2^8 = ~150kHz
   // pulse width (cycle)
-  TPU5.TGRA            = 0x0010;     // cant controll (capacitive sounder)
+  TPU5.TGRA            = 0x0020;     // cant controll (capacitive sounder)
   // pulse width (cycle)
   switch( snd->pitch ){
   case HMI_SND_A4:
@@ -692,107 +699,107 @@ uint8_t HMISndBeep( st_HMI *hmi ){
 
 uint8_t HMISndSeqGenPitch( st_HMI *hmi, uint8_t *bytes ){
   for( int i=0 ; i<HMI_SND_BUFF ; i++ ){
-    switch( bytes[i+1] ){
+    switch( bytes[i*3+1] ){
     case '4':
-      switch( bytes[i] ){
+      switch( bytes[i*3] ){
       case 'A':
-	switch( bytes[i+2] ){
+	switch( bytes[i*3+2] ){
 	case 'S':
-	  hmi->snd_seq[i/3].pitch = HMI_SND_A4S;
+	  hmi->snd_seq[i].pitch = HMI_SND_A4S;
 	  break;
 	default:
-	  hmi->snd_seq[i/3].pitch = HMI_SND_A4;	  
+	  hmi->snd_seq[i].pitch = HMI_SND_A4;	  
 	  break;
 	}
 	break;
       case 'B':
-	hmi->snd_seq[i/3].pitch = HMI_SND_B4;
+	hmi->snd_seq[i].pitch = HMI_SND_B4;
 	break;
       }
       break;
     case '5':
-      switch( bytes[i] ){
+      switch( bytes[i*3] ){
       case 'A':
-	switch( bytes[i+2] ){
+	switch( bytes[i*3+2] ){
 	case 'S':
-	  hmi->snd_seq[i/3].pitch = HMI_SND_A5S;
+	  hmi->snd_seq[i].pitch = HMI_SND_A5S;
 	  break;
 	default:
-	  hmi->snd_seq[i/3].pitch = HMI_SND_A5;	  
+	  hmi->snd_seq[i].pitch = HMI_SND_A5;	  
 	  break;
 	}
 	break;
       case 'B':
-	hmi->snd_seq[i/3].pitch = HMI_SND_B5;
+	hmi->snd_seq[i].pitch = HMI_SND_B5;
 	break;
       case 'C':
-	switch( bytes[i+2] ){
+	switch( bytes[i*3+2] ){
 	case 'S':
-	  hmi->snd_seq[i/3].pitch = HMI_SND_C5S;
+	  hmi->snd_seq[i].pitch = HMI_SND_C5S;
 	  break;
 	default:
-	  hmi->snd_seq[i/3].pitch = HMI_SND_C5;
+	  hmi->snd_seq[i].pitch = HMI_SND_C5;
 	  break;
 	}
 	break;
       case 'D':
-	switch( bytes[i+2] ){
+	switch( bytes[i*3+2] ){
 	case 'S':
-	  hmi->snd_seq[i/3].pitch = HMI_SND_D5S;
+	  hmi->snd_seq[i].pitch = HMI_SND_D5S;
 	  break;
 	default:
-	  hmi->snd_seq[i/3].pitch = HMI_SND_D5;
+	  hmi->snd_seq[i].pitch = HMI_SND_D5;
 	  break;
 	}
 	break;
       case 'E':
-	hmi->snd_seq[i/3].pitch = HMI_SND_E5;
+	hmi->snd_seq[i].pitch = HMI_SND_E5;
 	break;
       case 'F':
-	switch( bytes[i+2] ){
+	switch( bytes[i*3+2] ){
 	case 'S':
-	  hmi->snd_seq[i/3].pitch = HMI_SND_F5S;
+	  hmi->snd_seq[i].pitch = HMI_SND_F5S;
 	  break;
 	default:
-	  hmi->snd_seq[i/3].pitch = HMI_SND_F5;
+	  hmi->snd_seq[i].pitch = HMI_SND_F5;
 	  break;
 	}
 	break;
       case 'G':
-	switch( bytes[i+2] ){
+	switch( bytes[i*3+2] ){
 	case 'S':
-	  hmi->snd_seq[i/3].pitch = HMI_SND_G5S;
+	  hmi->snd_seq[i].pitch = HMI_SND_G5S;
 	  break;
 	default:
-	  hmi->snd_seq[i/3].pitch = HMI_SND_G5;
+	  hmi->snd_seq[i].pitch = HMI_SND_G5;
 	  break;
 	}
 	break;
       }
       break;
     case '6':
-      switch( bytes[i] ){
+      switch( bytes[i*3] ){
       case 'A':
-	hmi->snd_seq[i/3].pitch = HMI_SND_A6;
+	hmi->snd_seq[i].pitch = HMI_SND_A6;
 	break;
       }
       break;
     case '7':
-      switch( bytes[i] ){
+      switch( bytes[i*3] ){
       case 'A':
-	hmi->snd_seq[i/3].pitch = HMI_SND_A7;
+	hmi->snd_seq[i].pitch = HMI_SND_A7;
 	break;
       }
       break;
     case '8':
-      switch( bytes[i] ){
+      switch( bytes[i*3] ){
       case 'A':
-	hmi->snd_seq[i/3].pitch = HMI_SND_A8;
+	hmi->snd_seq[i].pitch = HMI_SND_A8;
 	break;
       }
       break;
     default:
-      hmi->snd_seq[i/3].pitch = HMI_SND_A4;
+      hmi->snd_seq[i].pitch = 0;
       break;
     }
   }
@@ -800,7 +807,7 @@ uint8_t HMISndSeqGenPitch( st_HMI *hmi, uint8_t *bytes ){
 }
 
 uint8_t HMISndSeqGenTempo( st_HMI *hmi, uint8_t *bytes ){
-  for( int i=0 ; i<HMI_SND_BUFF ; i+=2 ){
+  for( int i=0 ; i<HMI_SND_BUFF ; i++ ){
     switch( bytes[i] ){
     case 'L':
       hmi->snd_seq[i].tempo = HMI_SND_MOR_L_LEN;
@@ -809,7 +816,7 @@ uint8_t HMISndSeqGenTempo( st_HMI *hmi, uint8_t *bytes ){
       hmi->snd_seq[i].tempo = HMI_SND_MOR_S_LEN;
       break;
     default:
-      hmi->snd_seq[i].tempo = HMI_SND_MOR_S_LEN;
+      hmi->snd_seq[i].tempo = 0;
       break;
     }
   }
@@ -827,47 +834,50 @@ uint8_t HMISndSeqGen( st_HMI *hmi, st_hTx * htx ){
   if( htx->opmd_tran ){
     switch( htx->opmd ){
     case OPMD_BOOT:
-      hmi->snd_seq[0].pitch = HMI_SND_A7;
-      hmi->snd_seq[0].tempo = HMI_SND_MOR_L_LEN;
-      hmi->snd_seq[1].pitch = HMI_SND_MUTE;
-      hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN;
-      hmi->snd_seq[2].pitch = HMI_SND_D5;
-      hmi->snd_seq[2].tempo = HMI_SND_MOR_S_LEN;
-      hmi->snd_seq[3].pitch = HMI_SND_G5;
-      hmi->snd_seq[3].tempo = HMI_SND_MOR_S_LEN;
-      HMISndSeqGenFill( hmi, 4 );
-      HMISndSeqGenPitch( hmi, "G5 G5 G5 G5 G5" );
+      /* hmi->snd_seq[0].pitch = HMI_SND_A7; */
+      /* hmi->snd_seq[0].tempo = HMI_SND_MOR_L_LEN; */
+      /* hmi->snd_seq[1].pitch = HMI_SND_MUTE; */
+      /* hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN; */
+      /* hmi->snd_seq[2].pitch = HMI_SND_D5; */
+      /* hmi->snd_seq[2].tempo = HMI_SND_MOR_S_LEN; */
+      /* hmi->snd_seq[3].pitch = HMI_SND_G5; */
+      /* hmi->snd_seq[3].tempo = HMI_SND_MOR_S_LEN; */
+      /* HMISndSeqGenFill( hmi, 4 ); */
+      HMISndSeqGenPitch( hmi, "G5 G5 G5 G5 G5 " );
       HMISndSeqGenTempo( hmi, "LSSSL" );
       break;
     case OPMD_SAFE:
-      hmi->snd_seq[0].pitch = HMI_SND_A6;
-      hmi->snd_seq[0].tempo = HMI_SND_MOR_S_LEN;
-      hmi->snd_seq[1].pitch = HMI_SND_A6;
-      hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN;
-      hmi->snd_seq[2].pitch = HMI_SND_A6;
-      hmi->snd_seq[2].tempo = HMI_SND_MOR_S_LEN;
-      HMISndSeqGenFill( hmi, 3 );
+      /* hmi->snd_seq[0].pitch = HMI_SND_A6; */
+      /* hmi->snd_seq[0].tempo = HMI_SND_MOR_S_LEN; */
+      /* hmi->snd_seq[1].pitch = HMI_SND_A6; */
+      /* hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN; */
+      /* hmi->snd_seq[2].pitch = HMI_SND_A6; */
+      /* hmi->snd_seq[2].tempo = HMI_SND_MOR_S_LEN; */
+      /* HMISndSeqGenFill( hmi, 3 ); */
+      HMISndSeqGenPitch( hmi, "A6 A6 A6 " );
+      HMISndSeqGenTempo( hmi, "SSS" );
       break;
     case OPMD_RUN_INIT:
-      hmi->snd_seq[0].pitch = HMI_SND_E5;
-      hmi->snd_seq[0].tempo = HMI_SND_MOR_S_LEN;
-      hmi->snd_seq[1].pitch = HMI_SND_D5;
-      hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN;
-      HMISndSeqGenFill( hmi, 2 );
+      /* hmi->snd_seq[0].pitch = HMI_SND_E5; */
+      /* hmi->snd_seq[0].tempo = HMI_SND_MOR_S_LEN; */
+      /* hmi->snd_seq[1].pitch = HMI_SND_D5; */
+      /* hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN; */
+      /* HMISndSeqGenFill( hmi, 2 ); */
+      HMISndSeqGenPitch( hmi, "E5 D5 " );
+      HMISndSeqGenTempo( hmi, "SS" );
       break;
     case OPMD_RUN:
-      hmi->snd_seq[0].pitch = HMI_SND_G5;
-      hmi->snd_seq[0].tempo = HMI_SND_MOR_S_LEN;
-      hmi->snd_seq[1].pitch = HMI_SND_G5;
-      hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN;
-      HMISndSeqGenFill( hmi, 2 );
-      //HMISndSeqGenPitch( hmi, "G5 G5 G5 G5 G5" );
-      //HMISndSeqGenTempo( hmi, "LSSSL" );
+      /* hmi->snd_seq[0].pitch = HMI_SND_G5; */
+      /* hmi->snd_seq[0].tempo = HMI_SND_MOR_S_LEN; */
+      /* hmi->snd_seq[1].pitch = HMI_SND_G5; */
+      /* hmi->snd_seq[1].tempo = HMI_SND_MOR_S_LEN; */
+      /* HMISndSeqGenFill( hmi, 2 ); */
+      HMISndSeqGenPitch( hmi, "A4 A4SB4 C5 G5SD5 E5 F5 " );
+      HMISndSeqGenTempo( hmi, "SSSSSSSS" );
       break;
     default:
-      hmi->snd_seq[0].pitch = HMI_SND_MUTE;
-      hmi->snd_seq[0].tempo = HMI_SND_MOR_L_LEN;
-      HMISndSeqGenFill( hmi, 1 );
+      HMISndSeqGenPitch( hmi, "A7 A7 A7 " );
+      HMISndSeqGenTempo( hmi, "SLS" );
       break;
     }
     htx->opmd_tran = 0;
@@ -883,8 +893,9 @@ uint8_t HMISndSeqGen( st_HMI *hmi, st_hTx * htx ){
 
 uint8_t HMISndFB( st_HMI *hmi ){
   if( hmi->snd_state_seq ){
+    // mode transition sound operation
   }else{
-    // Sound feed back operation
+    // input sound feed back operation
     if( hmi->snd_state_fb ){
       if( hmi->snd_cnt_fb == 0 ){
 	hmi->snd_seq[0].pitch = HMI_SND_A7;
@@ -901,22 +912,40 @@ uint8_t HMISndFB( st_HMI *hmi ){
   return( 0 );
 }
 
-
-uint8_t HMIFlash( st_HMI *hmi, st_hTx *htx ){
+uint8_t HMISelfTest( st_HMI *hmi, st_hTx *htx ){
+  // tmp var
+  uint16_t cnt, i;
+  for( i=0 ; i<HMI_SELFT_DT ; i++ )
   // every HMI_CYCLE_[IN/OUT] ms looping
   if( IR( CMT1, CMI1 ) ){
-    // LED loop
-    /* PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2; */
-    /* PORT3.PODR.BIT.B2 = !PORT3.PODR.BIT.B2; */
-    HMILEDSetRGBMode( hmi, htx );
-    HMILEDBatLow( hmi, htx, 50 );
-    HMILEDPPMAct( hmi, htx, 5 );
 
-    // Sounder loop
-    HMISndSeqGen( hmi, htx );
-    HMISndFB( hmi );
-
-    // clear for next frame
-    IR( CMT1, CMI1 ) = 0;
+  // grad LED set
+  hmi->LED_RGB[HMI_LED_R] = 0xAF00;  // Red
+  hmi->LED_RGB[HMI_LED_G] = 0xAF00;  // Green
+  hmi->LED_RGB[HMI_LED_B] = 0x00FF;  // Blue
+  HMILEDSetRGB( hmi );
+  // clear for next frame
+  IR( CMT1, CMI1 ) = 0;
   }
+}
+
+uint8_t HMIFlash( st_HMI *hmi, st_hTx *htx ){
+  // every HMI_CYCLE_OUT ms looping
+  /* if( IR( CMT1, CMI1 ) ){ */
+    if( hmi->cnt_cyc_out > HMI_CYCLE_OUT ){
+      // LED loop
+      HMILEDSetRGBMode( hmi, htx );
+      HMILEDBatLow( hmi, htx, 50 );
+      HMILEDPPMAct( hmi, htx, 3 );
+      
+      // Sounder loop
+      HMISndSeqGen( hmi, htx );
+      HMISndFB( hmi );
+
+      // clear for next frame
+      hmi->cnt_cyc_out = 0;
+    }
+    // clear for next frame
+  /*   IR( CMT1, CMI1 ) = 0; */
+  /* } */
 }

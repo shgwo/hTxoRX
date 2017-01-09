@@ -1,3 +1,25 @@
+// -------------------------------------------------------
+// ------------------------------------------------ Notice
+//  This program is distributed or redistributed to
+//  the world under the License of MIT.
+//
+// -------------------------------------------------------
+// ------------------------------------------------- Info.
+//
+//  Description:   RX63N MCU physical IO address defines
+//
+//  Author:        S.Nakamura (shgwo)
+//
+//  Ver.:          0.5
+//  last updated : 2017.01.09
+//
+//  history:
+//    2016.07.06  create for RX63N( GR-SAKURA ) base-system
+//                with development of hTxoRX
+//    2016.04.16  add definitions
+//    2016.09.09  add definitions (for SCid )
+//    2016.01.09  add definitions (for RSPI )
+//
 #ifndef __IODEFINE_ENUM_H__
 #define __IODEFINE_ENUM_H__
 
@@ -5,6 +27,9 @@
 
 #define ADDRESS_HOCOCR2 (( unsigned char *)0x00080037/*HOCOCR2*/)
 #define ADDRESS_PMCTLTSTR (( unsigned char *) 0x0008c2e0/*PMCLTSTR*/)
+
+// structs (shortage of iodefine.h)
+
 
 // bit meanings of System Critical Protect register
 enum enum_PRCR_PRCn {
@@ -151,6 +176,7 @@ enum enum_PmnPFS_ASEL {
   ASEL_ON
 };
 
+// PFS P1n
 enum enum_P12PFS_PSEL {
   P12PFS_HIZ,
   P12PFS_MTIC5U,
@@ -238,6 +264,7 @@ enum enum_P17PFS_PSEL {
   P17PFS_PIXD3=28        //11100b
 };
 
+// PFS P2n
 enum enum_P21PFS_PSEL {
   P21PFS_HIZ,
   P21PFS_MTIOC1B,
@@ -286,6 +313,7 @@ enum enum_P26PFS_PSEL {
   P26PFS_MOSIB=13        //b01101
 };
 
+// PFS P3n
 enum enum_P30PFS_PSEL {
   P30PFS_HIZ,
   P30PFS_MTIOC4B,
@@ -311,6 +339,29 @@ enum enum_P32PFS_PSEL {
   P32PFS_VSYNC=28        //b11100
 };
 
+// PFS PCn
+enum enum_PC0PFS_PSEL {
+  PC0PFS_HIZ,
+  PC0PFS_MTIOC3C,
+  PC0PFS_TCLKC=3,        //b00011
+  PC0PFS_PO17=6,         //b00110
+  PC0PFS_CTS_RTS_SS5=11, //b01011
+  PC0PFS_SSLA1=13,       //b01101
+  PC0PFS_SCL3=15,        //b01111
+  PC0PFS_ET_ERXD3=17     //b10001
+};
+
+enum enum_PC1PFS_PSEL {
+  PC1PFS_HIZ,            //b00000
+  PC1PFS_MTIOC3A,        //b00001
+  PC1PFS_TCLKD=3,        //b00011
+  PC1PFS_PO18=6,         //b00110  
+  PC1PFS_SCK5=10,        //b01010
+  PC1PFS_SSLA2=13,       //b01101 
+  PC1PFS_SDA3=15,        //b01111 
+  PC1PFS_ET_RXD2=17      //b10001
+};
+
 enum enum_PC2PFS_PSEL {
   PC2PFS_HIZ,
   PC2PFS_MTIOC4B,
@@ -332,13 +383,59 @@ enum enum_PC3PFS_PSEL {
   PC3PFS_ET_TX_ER        //b10001
 };
 
-enum enum_PJ3PFS_PSEL {
-  PJ3PFS_HIZ,
-  PJ3PFS_MTIOC3C,
-  PJ3PFS_CSI6=10,//1010b
-  PJ3PFS_CSI0=11//1011b
+enum enum_PC4PFS_PSEL {
+  PC4PFS_HIZ,            //b00000
+  PC4PFS_MTIOC3D,        //b00001
+  PC4PFS_MTCLKC,         //b00010
+  PC4PFS_TIOCC6,         //b00011
+  PC4PFS_TCLKE,          //b00100
+  PC4PFS_TMCI1,          //b00101
+  PC4PFS_PO25,           //b00110
+  PC4PFS_POE0,           //b00111
+  PC4PFS_SCK5=10,        //b01010
+  PC4PFS_CTS_RTS_SS8,    //b01011
+  PC4PFS_SSLA0=13,       //b01101 
+  PC4PFS_ET_TX_CLK=17    //b10001
 };
 
+enum enum_PC5PFS_PSEL {
+  PC5PFS_HIZ,
+  PC5PFS_MTIOC3B,
+  PC5PFS_MTCLKD,         //b00010
+  PC5PFS_TIOCD6,         //b00011
+  PC5PFS_TCLKF,          //b00100
+  PC5PFS_TMRI2,          //b00101
+  PC5PFS_PO29,           //b00110
+  PC5PFS_SCK8=10,        //b01010
+  PC5PFS_RSPCKA=13,      //b01101 
+  PC5PFS_ETXD2=17        //b10001
+};
+
+enum enum_PC6PFS_PSEL {
+  PC6PFS_HIZ,
+  PC6PFS_MTIOC3C,
+  PC6PFS_MTCLKA,         //b00010
+  PC6PFS_TIOCA6,         //b00011
+  PC6PFS_TMCI2=5,        //b00101
+  PC6PFS_PO30,           //b00110
+  PC6PFS_RXD8=10,        //b01010
+  PC6PFS_MOSIA=13,       //b01101 
+  PC6PFS_ETXD3=17        //b10001
+};
+
+enum enum_PC7PFS_PSEL {
+  PC7PFS_HIZ,
+  PC7PFS_MTIOC3A,
+  PC7PFS_MTCLKB,         //b00010
+  PC7PFS_TIOCB6,         //b00011
+  PC7PFS_TMO2=5,         //b00101
+  PC7PFS_PO31,           //b00110
+  PC7PFS_TXD8=10,        //b01010
+  PC7PFS_MISOA=13,       //b01101
+  PC7PFS_ET_COL=17       //b10001
+};
+
+// PFS PEn
 enum enum_PE1PFS_PSEL {
   PE1PFS_HIZ,
   PE1PFS_MTIOC4C,      //0001b
@@ -357,6 +454,14 @@ enum enum_PE2PFS_PSEL {
   PE2PFS_RXD12=12,     //1100b
   PE2PFS_SSLB3,        //1101b
   PE2PFS_MOSIB         //1110b
+};
+
+// PFS PJn
+enum enum_PJ3PFS_PSEL {
+  PJ3PFS_HIZ,
+  PJ3PFS_MTIOC3C,
+  PJ3PFS_CSI6=10,//1010b
+  PJ3PFS_CSI0=11//1011b
 };
 
 
@@ -902,6 +1007,13 @@ enum enum_SCI_SPMR_CTSE {
   // CTS Enable
   SCI_CTSE_DE,    // CTS pin function is disabled
   SCI_CTSE_EN     // CTS pin function is enabled
+};
+
+//
+enum enum_RSPI_SPMR_CTSE {
+  // CTS Enable
+  RSPI_CTSE_DE,    // CTS pin function is disabled
+  RSPI_CTSE_EN     // CTS pin function is enabled
 };
 
 

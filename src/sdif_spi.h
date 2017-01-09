@@ -32,21 +32,24 @@
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
 // label definition for XX
+#define RSPI_CH 0
 
+enum enum_SDSPIMode{
+  SDSPI_MD_UNKNOWN, // normal opration
+  SDSPI_MD_PRECLK,  // normal opration
+  SDSPI_MD_RSTCMD,  // normal opration
+  SDSPI_MD_N
+};
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
-typedef struct st_SDData {
-  char     name[10];
-  uint8_t  ch_adc;
-  uint8_t  invert;
-  uint16_t offset;
-  double   gain;
-} st_SDData;
+typedef struct st_SDSPI {
+  enum enum_SDSPIMode md;
+} st_SDSPI;
 
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
-extern uint8_t SDIF_SPIInit( struct st_SDData* );
+extern uint8_t SDIF_SPIInit( struct st_SDSPI* );
 
 #endif

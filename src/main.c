@@ -31,15 +31,16 @@
 #include "sysutil_RX63N.h"
 #include "hTxoRX.h"
 #include "HMI.h"
+#include "telem_frsky.h"
 #include "ppm_gen.h"
-#include "serial.h"
 #include "adc_sar12b.h"
+#include "serial.h"
 #include "dbg_utils.h"
 #include <stdio.h>
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
-#define sleep(X) for(j = 0; j < X*1000; j++) {}
+#define sleep(X) for(j=0 ; j < X*1000 ; j++){ }  // wait for X ms
 
 //#define NCH_ADC 21   // number of AD channel on the HW
 
@@ -51,6 +52,7 @@ st_PPMAdj ppm_adj[PPM_N_CH];
 st_HMI    hmi;
 st_Serial ser[UART_N_APP];
 st_hTx    htx;
+st_TelemFrskyD telem;
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
 void DataDisp( unsigned char );
@@ -120,17 +122,6 @@ int main( void )
   SerInit( &ser[UART_IOA], UART_BRATE_IOA, SER_IOA );
   // PE1,2 UART Telemetry IF
   SerInit( &ser[UART_TELEM], UART_BRATE_TELEM, SER_TELEM );  
-  /* Ser12Init( &ser[UART_TELEM], UART_BRATE_TELEM ); */
-  
-  // test setting
-  // PE1, PE2 -> UART Port setting (Rx/Tx)
-  /* PORTE.PODR.BIT.B1  = 0; */
-  /* PORTE.PCR.BIT.B1   = PCR_OPEN;         // PCR_OPEN / PCR_PULLUP */
-  /* PORTE.PCR.BIT.B2   = PCR_PULLUP;       // PCR_OPEN / PCR_PULLUP */
-  /* PORTE.PMR.BIT.B1   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC */
-  /* PORTE.PMR.BIT.B2   = PMR_GPIO;         // PMR_GPIO / PMR_FUNC */
-  /* PORTE.PDR.BIT.B1   = PDR_OUT;          // PDR_IN / PDR_OUT */
-  /* PORTE.PDR.BIT.B2   = PDR_IN;           // PDR_IN / PDR_OUT */
 
   // on-board LED
   dbgDispLEDInit();
@@ -141,14 +132,17 @@ int main( void )
   // setting for Rotary encoder
   /* HMIPortInFuncInit( ); */  
 
-  // initializing PPM ch val ( * future func *)
+  // initializing PPM ch val ( * beta func *)
   // Name labels for each PPM ch
-  char ppm_chname[PPM_N_CH][10] = { "Roll", "Pitch", "Throttle", "Yawe", "Arm", "AUX2", "FiteMD", "AUX4" };
+  char ppm_chname[PPM_N_CH][10] = { "Roll", "Pitch", "Throttle", "Yaw", "Arm", "AUX2", "FiteMD", "AUX4" };
   // set adj ( name str, ad_ch, inv, offset, gain )
   PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 132 * 6), 0.5 ); // Roll
+  PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 147 * 6), 0.5 ); // Roll(SBUS)
   PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 196 * 6), 0.5 ); // Pitch
+  PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 211 * 6), 0.5 ); // Pitch(SBUS)
   PPMGenAdjInit( &ppm.adj[2], ppm_chname[2],  0, PPMADJ_NOINV, -( 224 * 6), 0.5 ); // Throttle
-  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 293 * 6), 0.5 ); // Yaw
+  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 297 * 6), 0.5 ); // Yaw
+  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 311 * 6), 0.5 ); // Yaw(SBUS)
   PPMGenAdjInit( &ppm.adj[4], ppm_chname[4], 22, PPMADJ_NOINV,           0, 1.0 ); // Arm
   PPMGenAdjInit( &ppm.adj[5], ppm_chname[5],  4, PPMADJ_NOINV,           0, 1.0 ); // AUX2
   PPMGenAdjInit( &ppm.adj[6], ppm_chname[6], 22, PPMADJ_NOINV,           0, 1.0 ); // FliteMD
@@ -157,34 +151,38 @@ int main( void )
   PPMGenStart();
   
   // 
-  // Main routine start
+  // Main routine begin
   //
-  // Init
+  // Init vars
   uint8_t  status = 0, stat_ppm=0, div = 3;
   uint8_t  flag   = 0;
   uint16_t ppm_val[8], adc_val[21], adc_bat = 0, adc_arm = 1000;
   uint8_t  mode_test = 0xAA;
   uint8_t  dbg = 0x00, dbg_in = 0x00, dbg_tgl = 0x00;
-  uint8_t  dat_telem[SER_BUFF], test = 0x00, dbg_ioa[SER_BUFF];
+  uint8_t  dbg_telem, dbg_telem_tail = 0x00;
+  uint8_t  dat_telem[SER_BUFF], num_telem = 0, test = 0x00, dbg_ioa[SER_BUFF];
   uint16_t dbg_cnt = 0x00;
   char     dbg_str[SER_BUFF];
   //unsigned char test = 0;
   
   hTxSetMode( &htx, OPMD_SAFE);
-  //SerWrite( &ser[UART_MSP], 0xA1 );  
+  //SerWrite( &ser[UART_MSP], 0xA1 );
+  telem.stat = TELFRSKY_SRC;
   sleep( 1000 );
 
   // main loop
   while(1) {
+    // mission-critical loop
+    
+    
     // state machine
-
     switch( htx.opmd ){
       // SAFE mode; ARM => not ARMed
       //            throttle => zero
       //            Pitch, Roll, Yaw => neutral
     case OPMD_SAFE:
       hTxSetModeLogOff( &htx );
-      if( HMILongPress( &hmi, HMI_SW_ARM_KEY, 1200 ) ){
+      if( HMILongPress( &hmi, HMI_SW_ARM_KEY, 500 ) ){
 	hTxSetMode( &htx, OPMD_RUN_INIT );
 	SerWrite( &ser[UART_MSP], 'r' );
       }
@@ -202,7 +200,6 @@ int main( void )
       //            Pitch, Roll, Yaw => neutral
       if( !HMILongPress( &hmi, HMI_SW_ARM_KEY, 100 ) ){
 	hTxSetMode( &htx, OPMD_RUN );
-	SerWrite( &ser[UART_MSP], 'T' );
 	SerBytesWrite( &ser[UART_MSP], "trn to RUN.." );
       }
       break;
@@ -218,15 +215,11 @@ int main( void )
 	hTxSetModeLogOff( &htx );
 	SerBytesWrite( &ser[UART_MSP], "run: Log off" );
       }
-
-      // routine
-      
       // end condition ( go to safe mode )
-      if( HMILongPress( &hmi, HMI_SW_ARM_KEY, 300 ) ){ hTxSetMode( &htx, OPMD_SAFE);  SerWrite( &ser[UART_MSP], 'S' ); }
+      if( HMILongPress( &hmi, HMI_SW_ARM_KEY, 100 ) ){ hTxSetMode( &htx, OPMD_SAFE);  SerWrite( &ser[UART_MSP], 'S' ); }
       if( HMILongPress( &hmi, HMI_SW_L2_KEY, 50 ) ){ hTxSetMode( &htx, OPMD_SAFE);  SerWrite( &ser[UART_MSP], 'S' ); }
       // future func: stick disarm()
       break;
-      
       // FAIL mode; ARM => not defined yet...
       //           throttle => zero (plan)
       //           Pitch, Roll, Yaw => neutral (plan)
@@ -261,8 +254,6 @@ int main( void )
     /*   adc_val[6] = (uint16_t)( 1.0*( adc12.data[4] >> (2 + 1)) ); // AUX3 */
     /*   adc_val[7] = 0; */
 
-
-      
       /* adc_bat = (S12AD.ADDR13 >> (2 + 0) ); */
       adc_bat = ( adc12.data[13] >> (2 + 0) );
     /*   IR( S12AD, S12ADI0 ) = 0; */
@@ -291,19 +282,19 @@ int main( void )
     }
     
     // Motors disarming check
-    adc_val[4] = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (250 * 6) );
+    adc_val[4] = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (300 * 6) );
     if( htx.opmd != OPMD_RUN ){
       adc_val[2] = 0; // Throttle
     }
-    adc_arm = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (250 * 6) );
+    adc_arm = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (50 * 6) ) : (300 * 6) );
     PPMGenSetVal( &ppm, 4, adc_arm );
-    // Throttle control
+    // Throttle control ( force zero when disarmed )
     if( htx.opmd != OPMD_RUN ){ PPMGenSetVal( &ppm, 2, 0 ); }
 
     // PPM generation core
-    // future func => PPMGen()
     PPMGen( &ppm, &adc12 );
-    hmi.ppm_cnt = ppm.cnt_end;
+    hmi.cnt_ppm = ppm.cnt_end;
+    
     /* adc_val[0] = ppm.data[0]; // Roll */
     /* adc_val[1] = ppm.data[1]; // Pitch */
     /* adc_val[2] = ppm.data[2]; // Throttle */
@@ -338,7 +329,9 @@ int main( void )
     SerDaemon( &ser[UART_MSP] );
     SerDaemon( &ser[UART_IOA] );
     SerDaemon( &ser[UART_TELEM] );
-
+    // Back gound processes (Telemetry) /* future func */
+    /* TelemfrskyD( &telem ); */
+    
     // Back gound processes (HMI)
     HMIFlash( &hmi, &htx );
     //if( Ser12ReadBG( &ser[UART_TELEM] ); ){
@@ -352,37 +345,117 @@ int main( void )
     // debug routine
     // LED indication (for debug, printf)
     if( !HMISWState( &hmi, HMI_SW_R2_B ) ){
-      // IOA (Infotainment over Air) data stream
+      // IOA (Infotainment over the Air) data stream
       //SerBytesRead( &ser[UART_IOA], dbg_ioa);
       //SerBytesWrite( &ser[UART_IOA], dbg_ioa);
       //SerBytesWrite( &ser[UART_IOA], "hTxoRX: IOA test stream.\n\r");
-      // 
       dbg_in = SerRead( &ser[UART_MSP]);
       dbg_in = dbg_in | SerRead( &ser[UART_IOA]);
       if( dbg_in == 'd' ){
 	/* SerBytesWrite( &ser[UART_MSP], "<dbg toggle>"); */
 	dbg_tgl = ~dbg_tgl;
       }
+      // debug on each operation loop
+      if( dbg_tgl ){
+	while( SerReadable( &ser[UART_TELEM] ) ){
+	  // state: search (begin/end separator)
+	  if( telem.stat == TELFRSKY_SRC ){
+	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){ continue; }
+	    else{
+	      SerBytesWrite( &ser[UART_IOA], "7E " );
+	      telem.stat = TELFRSKY_REC;
+	      break;
+	    }
+	  }
+	  // state: recognition (begin/end separator)
+	  if( telem.stat == TELFRSKY_REC ){
+	    // separator: begin
+	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){
+	      telem.stat = TELFRSKY_RD;
+	      sprintf( dbg_str, "%02X ", dbg_telem );
+	      SerBytesWrite( &ser[UART_IOA], dbg_str );
+	      break;
+	    }
+	    // separator: end
+	    else{
+	      SerBytesWrite( &ser[UART_IOA], "7E " );
+	    }
+	  }
+	  if( telem.stat == TELFRSKY_RD ){
+	    // data body (w/ bit stuffing)
+	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x7d ){
+	      /* SerBytesWrite( &ser[UART_IOA], "!7D" ); */
+	      telem.stat = TELFRSKY_RD_BS;
+	      break;
+	    }
+	    // data body
+	    else if( dbg_telem != 0x7e ){
+	      sprintf( dbg_str, "%02X ", dbg_telem );
+	      SerBytesWrite( &ser[UART_IOA], dbg_str );
+	    }
+	    // data end
+	    else{
+	      telem.stat = TELFRSKY_REC;
+	      SerBytesWrite( &ser[UART_IOA], "7E \n\r" );
+	      break;
+	    }
+	  }
+	  if( telem.stat == TELFRSKY_RD_BS ){
+	    // conv 7D 5E => 7E
+	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x5e ){
+	      /* SerBytesWrite( &ser[UART_IOA], "!5E " ); */
+	      SerBytesWrite( &ser[UART_IOA], "7E " );
+	      telem.stat = TELFRSKY_REC;
+	    }
+	    // conv 7D 5D => 7D
+	    else if( dbg_telem == 0x5d ){
+	      /* SerBytesWrite( &ser[UART_IOA], "!5D " ); */
+	      SerBytesWrite( &ser[UART_IOA], "7D " );
+	      telem.stat = TELFRSKY_REC;
+	    }
+	    else{
+	      SerBytesWrite( &ser[UART_IOA], "FF " );
+	      telem.stat = TELFRSKY_REC;
+	    }
+	  }
+	}
+	/* SerBytesWrite( &ser[UART_IOA], "|" ); */
+	
+	/* sprintf( dbg_str, "head|%03d <=> %03d|tail  ", */
+	/* 	 ser[UART_TELEM].rx_head, ser[UART_TELEM].rx_tail ); */
+	/* SerBytesWrite( &ser[UART_IOA], dbg_str ); */
+	/* for( int i=0 ; i<(SER_BUFF>>2) ; i++ ){ */
+	/*   sprintf( dbg_str, "%02X ", ser[UART_TELEM].rx_buff[ser[UART_TELEM].rx_head+i] ); */
+	/*   SerBytesWrite( &ser[UART_IOA], dbg_str ); */
+	/* } */
+	/* SerBytesWrite( &ser[UART_IOA], "\n\r" ); */
+	/* SerWrite( &ser[UART_IOA], SerRead( &ser[UART_TELEM] ) ); */
+      }
       if( (dbg_tgl) && (dbg_cnt++ == 0x00) ){
 	//SerBytesWrite( &ser[UART_IOA], "AT" );
 	//SerBytesRead( &ser[UART_TELEM], dat_telem );
 	/* test = SerRead( &ser[UART_TELEM] ); */
-	SerBytesRead( &ser[UART_TELEM], dat_telem );
+	num_telem = SerBytesRead( &ser[UART_TELEM], dat_telem );
+	for( int i=0 ; i<num_telem ; i++ ){
+	  sprintf( dbg_str, "%02X ", dat_telem[i] );
+	  SerBytesWrite( &ser[UART_IOA], dbg_str );
+	}
+	/* SerBytesWrite( &ser[UART_IOA], dat_telem); */
+	if( num_telem ){
+	  SerBytesWrite( &ser[UART_IOA], "\n\r" );
+	}
 	sprintf( dbg_str, "dbg:(0x%02X)[head %d/tail %d] ",
 		 dat_telem[0], ser[UART_TELEM].rx_head, ser[UART_TELEM].rx_tail );
 	SerBytesWrite( &ser[UART_MSP], dbg_str );
-	uint8_t *sci_err = (uint8_t *)(0x0008B304);
-	sprintf( dbg_str, "SCI12.SSR(0x" );
-	SerBytesWrite( &ser[UART_MSP], dbg_str );
-	SerBytesWrite( &ser[UART_IOA], dat_telem);
+	SerBytesWrite( &ser[UART_MSP], "SCI12.SSR(0x" );
+	uint8_t *sci_err = (struct st_sci0_ssr *)ser[UART_TELEM].addr_base_stat;
 	for( int j=0 ; j<sizeof(uint8_t)*8 ; j++ ){
 	  if( (*sci_err >> (7-j)) & 0x01 )
 	    SerWrite( &ser[UART_MSP], '1' );
 	  else
 	    SerWrite( &ser[UART_MSP], '0' );
 	}
-	sprintf( dbg_str, ")\n\r" );
-	SerBytesWrite( &ser[UART_MSP], dbg_str );
+	SerBytesWrite( &ser[UART_MSP], ")\n\r" );
 	*sci_err = *sci_err & ~0x38;
 	
 	/* SerBytesWrite( &ser[UART_MSP], dbg_str ); */
@@ -394,17 +467,15 @@ int main( void )
 	/* test = 0x30 + (ser[UART_TELEM].rx_tail % 10); */
 	/* SerBytesWrite( &ser[UART_MSP], "/" ); */
 	/* SerWrite( &ser[UART_MSP], test); */
-	
-	SerBytesWrite( &ser[UART_TELEM], "test, " );
+       
 	//SerWrite( &ser[UART_TELEM], dbg );
-	if( dbg = SerRead( &ser[UART_TELEM] ) ){
-
-	  sprintf( dbg_str, "0x%0X", dbg );
-	  SerBytesWrite( &ser[UART_MSP], dbg_str );
-	  //SerWrite( &ser[UART_MSP], (0x30 + (ser[UART_TELEM].rx_head % 10)) );
-	  //SerWrite( &ser[UART_MSP], (0x30 + (dbg % 10)) );
-	  SerWrite( &ser[UART_MSP], ' ' );
-	}	
+	/* if( dbg = SerRead( &ser[UART_TELEM] ) ){ */
+	/*   sprintf( dbg_str, "0x%0X", dbg ); */
+	/*   SerBytesWrite( &ser[UART_MSP], dbg_str ); */
+	/*   //SerWrite( &ser[UART_MSP], (0x30 + (ser[UART_TELEM].rx_head % 10)) ); */
+	/*   //SerWrite( &ser[UART_MSP], (0x30 + (dbg % 10)) ); */
+	/*   SerWrite( &ser[UART_MSP], ' ' ); */
+	/* }	 */
       }
       /* // GPIO telem pin check */
       /* if( PORTE.PIDR.BIT.B2 ){ */
@@ -444,7 +515,7 @@ int main( void )
       dbgDispLEDbit( IR(SCI5, TXI5), 2 );
       //      dbgDispLEDbit( IR(SCI12, ERI), 1 );
       /* dbgDispLEDbit( IR(SCI5, RXI5), 1 ); */
-      if( (hmi.ppm_cnt >> 7) & 0x01 ){
+      if( (hmi.cnt_ppm >> 7) & 0x01 ){
 	dbgDispLEDbit( (ser[UART_MSP].rx_tail >> 4), 1);
 	dbgDispLEDbit( (ser[UART_MSP].rx_tail >> 4), 1);
       }

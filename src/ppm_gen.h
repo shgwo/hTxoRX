@@ -36,6 +36,13 @@
 // ----------------------------------------------- Defines
 #define PPM_N_CH  8   // number of CH on PPM signal
 
+enum enum_PPMADJMode{
+  PPMADJ_ADJMD_LIN,   // linear adjstment
+  PPMADJ_ADJMD_EXPO,  // exponential adj.
+  PPMADJ_ADJMD_LUT,   // lut adj. 
+  PPMADJ_ADJMD_N
+};
+
 enum enum_PPMADJModeInv{
   PPMADJ_NOINV,
   PPMADJ_INV
@@ -64,13 +71,15 @@ enum enum_PPMMode{
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
 typedef struct st_PPMAdj {
-  char     name[10];  // id
-  uint8_t  lock;      // data lock flag
-  uint8_t  ch_adc;    // ch no. of adc connected to hw
-  uint8_t  invert;    // data inversion requirement
-  uint16_t offset;    // offset adjustment
-  double   gain;      // gain adjustment
-  double   expo;      // exponential adjustment
+  char                     name[10];  // id
+  enum enum_PPMADJModeLock lock;      // data force flag
+  uint16_t                 lckdat;    // force data
+  uint8_t                  ch_adc;    // ch no. of adc connected to hw
+  enum enum_PPMADJModeInv  invert;    // data inversion (neg-logic) requirement
+  enum enum_PPMADJMode     mode;      // adjustment mode
+  double                   gain;      // gain adjustment
+  uint16_t                 offset;    // offset adjustment
+  double                   expo;      // exponential adjustment
 } st_PPMAdj;
 
 typedef struct st_PPM {
@@ -89,7 +98,7 @@ struct st_ppm_pref {
 
   // resolution of ADC
 
-  // coefficient of convert
+  // coefficient of conversion
 };
 
 

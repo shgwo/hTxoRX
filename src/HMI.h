@@ -18,7 +18,9 @@
 //  history:
 //    2016.04.08  create for RX63N( GR-SAKURA ) base-system
 //    2016.04.16  add codes to operate TPU & ADC w/ synccronization
-//                (interrupt codes are not included yet..) 
+//                (interrupt codes are not included yet..)
+//    2016.12.25  SW port reassignment. Porting PC0 as CD function
+//                of SD card slot & PC52 newly assigned for replacement. 
 //
 #ifndef __HMI_H__
 #define __HMI_H__
@@ -102,19 +104,22 @@ enum enum_HMI_SND_PITCH {
   HMI_SND_A8    // 7040,
 };
 
-#define HMI_CYCLE_IN   1    // input loop cycle (ms)
-#define HMI_CYCLE_OUT  10   // output loop cycle (ms)
+#define HMI_CYCLE      1    // system: loop cycle (ms)  /* unused */
+#define HMI_CYCLE_IN   1    // input loop cycle (ms)    /* unused */
+#define HMI_CYCLE_OUT  10   // output loop cycle (ms)   /* unused */
 
 #define HMI_SW_ON_THR  5    // cycle ( * CMT1 cycle )
 
 #define HMI_LED_FB_LEN 80   // cycle ( * CMT1 cycle )
 
 #define HMISndGetPitch(freq) (uint16_t)((double)(4*12*1000000 / 256)/((double)(freq)))
-#define HMI_SND_TEMPO_BASE   20    // cycle ( * CMT1 cycle )
-#define HMI_SND_FB_LEN       5     // cycle ( * CMT1 cycle )
-#define HMI_SND_MOR_S_LEN    10   // cycle ( * CMT1 cycle )
+#define HMI_SND_TEMPO_BbHASE   20  // cycle ( * CMT1 cycle )
+#define HMI_SND_FB_LEN       5   // cycle ( * CMT1 cycle )
+#define HMI_SND_MOR_S_LEN    10  // cycle ( * CMT1 cycle )
 #define HMI_SND_MOR_L_LEN    50  // cycle ( * CMT1 cycle )
 #define HMI_SND_BUFF         20  // num of beep
+
+#define HMI_SELFT_DT         100  // cycle ( * CMT1 cycle )
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
@@ -129,17 +134,18 @@ typedef struct st_HMI {
   uint16_t adc_val[ADC12_N_CH];
   uint8_t  sw_state[HMI_N_SW];
   uint8_t  sw_state_old[HMI_N_SW];
-  uint8_t  sw_state_act;
   uint16_t sw_cnt [HMI_N_SW];
+  uint8_t  sw_state_act;
   //  uint16_t sw_ncnt [HMI_N_SW];
   uint16_t gmbl [HMI_N_GMBL];
   uint16_t trm [HMI_N_TRM];
+  // for output (general)
+  uint8_t  cnt_cyc_out;    
   // for output (LED)
   uint8_t  LED_state[HMI_N_LED];
-  uint8_t  ppm_cnt;
-  enum enum_HMI_SW  LED_RGB_state_fb;
-  uint8_t  LED_RGB_cnt_fb;
+  enum enum_HMI_SW LED_RGB_state_fb;
   uint16_t LED_RGB[HMI_N_LED_RGB];
+  uint8_t  LED_RGB_cnt_fb;
   // for output (Sounder)
   enum enum_HMI_SW snd_state_fb;
   uint16_t  snd_cnt_fb;
