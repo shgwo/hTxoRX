@@ -52,6 +52,8 @@
 #define TELEM_FRSKY_BS10_         0x7e
 #define TELEM_FRSKY_BS11_         0x7d
 
+// Frsky packet length
+#define TELEM_FRSKY_PCK_LEN       11
 
 // Enumerate FrSky packet codes  == from frsky.h ==
 #define LINKPKT                   0xfe
@@ -64,6 +66,15 @@
 #define RSSI1PKT                  0xf7
 #define RSSI2PKT                  0xf6
 #define RSSI_REQUEST              0xf1
+
+// byte stuffing (carrier)
+#define TELEM_FRSKY_BSFC00        0x5d
+#define TELEM_FRSKY_BSFC10        0x3e
+#define TELEM_FRSKY_BSFC11        0x3d
+// byte stuffing (replaced)
+#define TELEM_FRSKY_BSFC10_       0x5e
+#define TELEM_FRSKY_BSRC11_       0x5d
+
 
 // FrSky old DATA IDs (1 byte)  == from frsky.h ==
 #define GPS_ALT_BP_ID             0x01
@@ -102,23 +113,54 @@
 #define D_A1_ID                   0xF1
 #define D_A2_ID                   0xF2
 
-
 #define TELFRSKY_BUFF_PARSE 16
 
-// read state definition
-enum enum_TelemfrskyD_stat{
-  TELFRSKY_SRC,     // separator search
-  TELFRSKY_REC,     // recognize begin/end
-  TELFRSKY_RD,      // reading
-  TELFRSKY_RD_BS,   // reading (bit-staffing collection)
-  TELFRSKY_N_STATE  // number of state
+// read state definition at frsky block reading
+enum enum_TelemfrskyD_statBlockRead{
+  TELFRSKY_STBR_SRC,     // separator search
+  TELFRSKY_STBR_REC,     // recognize begin/end
+  TELFRSKY_STBR_RD,      // reading
+  TELFRSKY_STBR_RD_BS,   // reading (byte-stuffing collection)
+  TELFRSKY_STBR_N        // number of state
+};
+
+// read state definition at frsky FC reading (for Betaflight)
+enum enum_TelemfrskyD_statFCReadBeta{
+  TELFRSKY_STFCRBT_SRC,     // separator search
+  TELFRSKY_STFCRBT_REC,     // recognize begin/end
+  TELFRSKY_STFCRBT_RD,      // reading
+  TELFRSKY_STFCRBT_RD_BS,   // reading (byte-stuffing collection)
+  TELFRSKY_STFCRBT_N        // number of state
 };
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
+typedef struct st_TelemFrskyD_ParseLnkPkt {
+  union {
+    uint8_t  id;        // should be 0xFE
+    uint8_t  port1;     // AIN1 port 3.3V : 0x00-0xFF
+    uint8_t  port2;     // AIN2 port 3.3V : 0x00-0xFF
+    uint16_t rssi;      // Link quality (data 1/2 byte?)
+    uint8_t  dummy[4];  // filled by 0x00
+  };
+} st_TelemFrskyD_LnkPkt;
+
+typedef struct st_TelemFrskyD_ParseUsrPkt {
+  union {
+    uint8_t  id;        // should be 0xFD
+    uint8_t  len;       // payload data length
+    uint8_t  cnt;       // chain counter
+    uint8_t  dat[7];    // significant bytes
+  };
+} st_TelemFrskyD_UsrPkt;
+
+
 typedef struct st_TelemFrskyD_Parse {
+  enum enum_TelemfrskyD_statBlockRead  stat_br;
+  enum enum_TelemfrskyD_statFCReadBeta stat_fcr;
   uint8_t buff[TELFRSKY_BUFF_PARSE];
   uint8_t idx;
+  uint8_t stat_fill;
   /* uint8_t lnk_buff[TELFRSKY_BUFF_PARSE]; */
   /* uint8_t idx_lnk; */
   /* uint8_t usr_buff[TELFRSKY_BUFF_PARSE]; */
@@ -126,7 +168,6 @@ typedef struct st_TelemFrskyD_Parse {
 } st_TelemFrskyD_Parse;
   
 typedef struct st_TelemFrskyD {
-  enum enum_TelemfrskyD_stat stat;
   st_TelemFrskyD_Parse parse;
   uint16_t gps_alt;
   uint16_t acc_x;
@@ -139,9 +180,11 @@ typedef struct st_TelemFrskyD {
 
 // -------------------------------------------------------
 // -------------------------------- Proto-type declaration
-extern uint8_t TelmFrskyD( struct st_TelemFrskyD* );
+extern uint8_t TelemFrskyDInit( struct st_TelemFrskyD* );
+extern uint8_t TelemFrskyD( struct st_TelemFrskyD*, struct st_Serial*, struct st_Serial* );
 
 // for telemetry debug
-extern uint8_t TelmFrskyD_dbg( struct st_TelemFrskyD*, struct st_Serial*, struct st_Serial* );
+extern uint8_t TelemFrskyDdbg( struct st_TelemFrskyD*, struct st_Serial*, struct st_Serial* );
+extern uint8_t TelemFrskyDdbgBRPrint( struct st_TelemFrskyD*, struct st_Serial* );
 
 #endif

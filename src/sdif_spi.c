@@ -49,6 +49,12 @@ uint8_t SDIF_SPIFuncInit( void ){
   PORTC.PMR.BIT.B7     = PMR_FUNC;       // PMR_GPIO / PMR_FUNC
 }
 
+// clocking to enter SPI IF mode
+uint8_t SDIF_SPICardInit( st_SDSPI *sdspi ){
+  SDIF_SPIPortInit();
+  return( 0 );
+}
+
 // external initialize call
 uint8_t SDIF_SPIInit( st_SDSPI *sdspi ){
   // Port init

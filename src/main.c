@@ -121,7 +121,9 @@ int main( void )
   // PC30,26 UART Infotaiment on the Air IF
   SerInit( &ser[UART_IOA], UART_BRATE_IOA, SER_IOA );
   // PE1,2 UART Telemetry IF
-  SerInit( &ser[UART_TELEM], UART_BRATE_TELEM, SER_TELEM );  
+  SerInit( &ser[UART_TELEM], UART_BRATE_TELEM, SER_TELEM );
+  // Telemetry util
+  TelemFrskyDInit( &telem );
 
   // on-board LED
   dbgDispLEDInit();
@@ -167,7 +169,6 @@ int main( void )
   
   hTxSetMode( &htx, OPMD_SAFE);
   //SerWrite( &ser[UART_MSP], 0xA1 );
-  telem.stat = TELFRSKY_SRC;
   sleep( 1000 );
 
   // main loop
@@ -330,7 +331,7 @@ int main( void )
     SerDaemon( &ser[UART_IOA] );
     SerDaemon( &ser[UART_TELEM] );
     // Back gound processes (Telemetry) /* future func */
-    /* TelemfrskyD( &telem ); */
+    TelemFrskyD( &telem, &ser[UART_TELEM], &ser[UART_IOA] );
     
     // Back gound processes (HMI)
     HMIFlash( &hmi, &htx );
@@ -354,71 +355,75 @@ int main( void )
       if( dbg_in == 'd' ){
 	/* SerBytesWrite( &ser[UART_MSP], "<dbg toggle>"); */
 	dbg_tgl = ~dbg_tgl;
+	sprintf( dbg_str, "dbg toggle: [%01X]\n\r", dbg_tgl );
+	SerBytesWrite( &ser[UART_IOA], dbg_str );
       }
       // debug on each operation loop
       if( dbg_tgl ){
-	while( SerReadable( &ser[UART_TELEM] ) ){
-	  // state: search (begin/end separator)
-	  if( telem.stat == TELFRSKY_SRC ){
-	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){ continue; }
-	    else{
-	      SerBytesWrite( &ser[UART_IOA], "7E " );
-	      telem.stat = TELFRSKY_REC;
-	      break;
-	    }
-	  }
-	  // state: recognition (begin/end separator)
-	  if( telem.stat == TELFRSKY_REC ){
-	    // separator: begin
-	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){
-	      telem.stat = TELFRSKY_RD;
-	      sprintf( dbg_str, "%02X ", dbg_telem );
-	      SerBytesWrite( &ser[UART_IOA], dbg_str );
-	      break;
-	    }
-	    // separator: end
-	    else{
-	      SerBytesWrite( &ser[UART_IOA], "7E " );
-	    }
-	  }
-	  if( telem.stat == TELFRSKY_RD ){
-	    // data body (w/ bit stuffing)
-	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x7d ){
-	      /* SerBytesWrite( &ser[UART_IOA], "!7D" ); */
-	      telem.stat = TELFRSKY_RD_BS;
-	      break;
-	    }
-	    // data body
-	    else if( dbg_telem != 0x7e ){
-	      sprintf( dbg_str, "%02X ", dbg_telem );
-	      SerBytesWrite( &ser[UART_IOA], dbg_str );
-	    }
-	    // data end
-	    else{
-	      telem.stat = TELFRSKY_REC;
-	      SerBytesWrite( &ser[UART_IOA], "7E \n\r" );
-	      break;
-	    }
-	  }
-	  if( telem.stat == TELFRSKY_RD_BS ){
-	    // conv 7D 5E => 7E
-	    if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x5e ){
-	      /* SerBytesWrite( &ser[UART_IOA], "!5E " ); */
-	      SerBytesWrite( &ser[UART_IOA], "7E " );
-	      telem.stat = TELFRSKY_REC;
-	    }
-	    // conv 7D 5D => 7D
-	    else if( dbg_telem == 0x5d ){
-	      /* SerBytesWrite( &ser[UART_IOA], "!5D " ); */
-	      SerBytesWrite( &ser[UART_IOA], "7D " );
-	      telem.stat = TELFRSKY_REC;
-	    }
-	    else{
-	      SerBytesWrite( &ser[UART_IOA], "FF " );
-	      telem.stat = TELFRSKY_REC;
-	    }
-	  }
-	}
+	TelemFrskyDdbgBRPrint( &telem, &ser[UART_IOA] );
+	/* TelemFrskyDdbg( &telem, &ser[UART_TELEM], &ser[UART_IOA] ); */
+	/* while( SerReadable( &ser[UART_TELEM] ) ){ */
+	/*   // state: search (begin/end separator) */
+	/*   if( telem.parse.stat == TELFRSKY_SRC ){ */
+	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){ continue; } */
+	/*     else{ */
+	/*       SerBytesWrite( &ser[UART_IOA], "7E " ); */
+	/*       telem.parse.stat = TELFRSKY_REC; */
+	/*       break; */
+	/*     } */
+	/*   } */
+	/*   // state: recognition (begin/end separator) */
+	/*   if( telem.parse.stat == TELFRSKY_REC ){ */
+	/*     // separator: begin */
+	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){ */
+	/*       telem.parse.stat = TELFRSKY_RD; */
+	/*       sprintf( dbg_str, "%02X ", dbg_telem ); */
+	/*       SerBytesWrite( &ser[UART_IOA], dbg_str ); */
+	/*       break; */
+	/*     } */
+	/*     // separator: end */
+	/*     else{ */
+	/*       SerBytesWrite( &ser[UART_IOA], "7E " ); */
+	/*     } */
+	/*   } */
+	/*   if( telem.parse.stat == TELFRSKY_RD ){ */
+	/*     // data body (w/ bit stuffing) */
+	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x7d ){ */
+	/*       /\* SerBytesWrite( &ser[UART_IOA], "!7D" ); *\/ */
+	/*       telem.parse.stat = TELFRSKY_RD_BS; */
+	/*       break; */
+	/*     } */
+	/*     // data body */
+	/*     else if( dbg_telem != 0x7e ){ */
+	/*       sprintf( dbg_str, "%02X ", dbg_telem ); */
+	/*       SerBytesWrite( &ser[UART_IOA], dbg_str ); */
+	/*     } */
+	/*     // data end */
+	/*     else{ */
+	/*       telem.parse.stat = TELFRSKY_REC; */
+	/*       SerBytesWrite( &ser[UART_IOA], "7E \n\r" ); */
+	/*       break; */
+	/*     } */
+	/*   } */
+	/*   if( telem.parse.stat == TELFRSKY_RD_BS ){ */
+	/*     // conv 7D 5E => 7E */
+	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x5e ){ */
+	/*       /\* SerBytesWrite( &ser[UART_IOA], "!5E " ); *\/ */
+	/*       SerBytesWrite( &ser[UART_IOA], "7E " ); */
+	/*       telem.parse.stat = TELFRSKY_REC; */
+	/*     } */
+	/*     // conv 7D 5D => 7D */
+	/*     else if( dbg_telem == 0x5d ){ */
+	/*       /\* SerBytesWrite( &ser[UART_IOA], "!5D " ); *\/ */
+	/*       SerBytesWrite( &ser[UART_IOA], "7D " ); */
+	/*       telem.parse.stat = TELFRSKY_REC; */
+	/*     } */
+	/*     else{ */
+	/*       SerBytesWrite( &ser[UART_IOA], "FF " ); */
+	/*       telem.parse.stat = TELFRSKY_REC; */
+	/*     } */
+	/*   } */
+	/* } */
 	/* SerBytesWrite( &ser[UART_IOA], "|" ); */
 	
 	/* sprintf( dbg_str, "head|%03d <=> %03d|tail  ", */

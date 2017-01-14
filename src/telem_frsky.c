@@ -40,91 +40,125 @@ uint8_t TelemFrskyDParseInit( st_TelemFrskyD_Parse *parse ){
 }
 
 uint8_t TelemFrskyDParseEncue( st_TelemFrskyD_Parse *parse, uint8_t dat ){
-  if( parse->idx >= TELFRSKY_BUFF_PARSE )
-    return( 1 );
+  // encue dat
   parse->buff[parse->idx++] = dat;
+  // block data fill check
+  if( parse->idx >= TELEM_FRSKY_PCK_LEN ){
+      parse->stat_fill = 1;
+      parse->idx--;
+  }
+  return( 0 );
+}
+
+uint8_t TelemFrskyDParseClrcue( st_TelemFrskyD_Parse *parse ){
+  // clear index
+  parse->idx = 0;
   return( 0 );
 }
 
 //
 uint8_t TelemFrskyDInit( st_TelemFrskyD *telem ){
+  // buffer cue initialize
   TelemFrskyDParseInit( &(telem->parse) );
+
+  // reading state initialize
+  telem->parse.stat_br  = TELFRSKY_STBR_SRC;
+  telem->parse.stat_fcr = TELFRSKY_STFCRBT_SRC;
+  
+  return( 0 );
 }
 
 // for frsky D series modules frame parsing
-uint8_t TelemFrskyD( st_TelemFrskyD *telem, st_Serial *ser ){
+uint8_t TelemFrskyD( st_TelemFrskyD *telem, st_Serial *ser, st_Serial *ser_dbg ){
   // vars
   uint8_t tmp_telem = 0x00;
+  uint8_t dbg_str[SER_BUFF];
   // start to extract
   while( SerReadable( ser ) ){
     // state: search (begin/end separator)
-    if( telem->stat == TELFRSKY_SRC ){
+    if( telem->parse.stat_br == TELFRSKY_STBR_SRC ){
       if( (tmp_telem = SerRead( ser )) != TELEM_FRSKY_HEAD ){ continue; }
       else{
-	/* SerBytesWrite( ser[UART_IOA], "7E " ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
-	telem->stat = TELFRSKY_REC;
-	break;
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
+	/* break; */
       }
     }
     // state: recognition (begin/end separator)
-    if( telem->stat == TELFRSKY_REC ){
-      // separator: begin
+    else if( telem->parse.stat_br == TELFRSKY_STBR_REC ){
+      // separator: begin | data
       if( (tmp_telem = SerRead( ser )) != TELEM_FRSKY_TAIL ){
-	/* sprintf( dbg_str, "%02X ", tmp_telem ); */
-	/* SerBytesWrite( ser[UART_IOA], dbg_str ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
-	telem->stat = TELFRSKY_RD;
-	break;
+	telem->parse.stat_br = TELFRSKY_STBR_RD;
+	/* break; */
       }
-      // separator: end
+      // separator: end | begin
       else{
-	/* SerBytesWrite( ser[UART_IOA], "7E " ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
+	TelemFrskyDParseClrcue( &(telem->parse) );
       }
     }
-    if( telem->stat == TELFRSKY_RD ){
+    else if( telem->parse.stat_br == TELFRSKY_STBR_RD ){
       // data body (w/ bit stuffing)
       if( (tmp_telem = SerRead( ser )) == TELEM_FRSKY_BS00 ){
-	/* SerBytesWrite( ser[UART_IOA], "!7D" ); */
-	telem->stat = TELFRSKY_RD_BS;
-	break;
+	telem->parse.stat_br = TELFRSKY_STBR_RD_BS;
+	/* break; */
       }
       // data body
       else if( tmp_telem != TELEM_FRSKY_TAIL ){
-	/* sprintf( dbg_str, "%02X ", tmp_telem ); */
-	/* SerBytesWrite( ser[UART_IOA], dbg_str ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
+	/* break; */
       }
       // data end
       else{
-	/* SerBytesWrite( ser[UART_IOA], "7E \n\r" ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
-	telem->stat = TELFRSKY_REC;
-	break;
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
+	/* telem->parse.stat_fill = 1; */
+	// debug: block disp
+	/* for( uint8_t i=0 ; i<TELFRSKY_BUFF_PARSE ; i++ ){ */
+	/*   sprintf( dbg_str, "%02X ", telem->parse.buff[i] ); */
+	/*   SerBytesWrite( ser_dbg, dbg_str ); */
+	/* } */
+	/* SerBytesWrite( ser_dbg, "\n\r" ); */
+	/* break; */
       }
     }
-    if( telem->stat == TELFRSKY_RD_BS ){
+    else if( telem->parse.stat_br == TELFRSKY_STBR_RD_BS ){
       // conv 7D 5E => 7E
       if( (tmp_telem = SerRead( ser )) == TELEM_FRSKY_BS10 ){
-	/* SerBytesWrite( ser[UART_IOA], "!5E " ); */
-	/* SerBytesWrite( ser[UART_IOA], "7D " ); */
-	TelemFrskyDParseEncue( &(telem->parse), TELEM_FRSKY_BS10_ );
-	telem->stat = TELFRSKY_REC;
+	tmp_telem = TELEM_FRSKY_BS10_;
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
       }
       // conv 7D 5D => 7D
       else if( tmp_telem == TELEM_FRSKY_BS11 ){
-	/* SerBytesWrite( ser[UART_IOA], "!5D " ); */
-	/* SerBytesWrite( ser[UART_IOA], "7E " ); */
-	TelemFrskyDParseEncue( &(telem->parse), TELEM_FRSKY_BS11_ );
-	telem->stat = TELFRSKY_REC;
+	tmp_telem = TELEM_FRSKY_BS11_;
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
       }
       else{
-	/* SerBytesWrite( ser[UART_IOA], "FF " ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );	
-	telem->stat = TELFRSKY_REC;
+	telem->parse.stat_br = TELFRSKY_STBR_SRC;
       }
     }
+    // encue efficient byte
+    if( telem->parse.stat_br != TELFRSKY_STBR_RD_BS ){
+      TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
+      /* sprintf( dbg_str, "[%02d]%02X ", telem->parse.idx, tmp_telem ); */
+      /* sprintf( dbg_str, "[%02d]%02X ", telem->parse.idx, telem->parse.buff[telem->parse.idx-1] ); */
+      /* SerBytesWrite( ser_dbg, dbg_str ); */
+    }
+  }
+  return ( 0 );
+}
+
+
+uint8_t TelemFrskyDdbgBRPrint( st_TelemFrskyD *telem, st_Serial *ser_dbg ){
+  // temp var
+  uint8_t dbg_str[SER_BUFF];
+  // process
+  if( telem->parse.stat_fill ){
+    for( uint8_t i=0 ; i<TELFRSKY_BUFF_PARSE ; i++ ){
+      sprintf( dbg_str, "%02X ", telem->parse.buff[i] );
+      SerBytesWrite( ser_dbg, dbg_str );
+    }
+    sprintf( dbg_str, " [%02d] \n\r", telem->parse.idx );
+    SerBytesWrite( ser_dbg, dbg_str );
+
+    // clear block fill state
+    telem->parse.stat_fill = 0;
   }
   return ( 0 );
 }
@@ -138,69 +172,63 @@ uint8_t TelemFrskyDdbg( st_TelemFrskyD *telem, st_Serial *ser_telem, st_Serial *
   // start to extract
   while( SerReadable( ser_telem ) ){
     // state: search (begin/end separator)
-    if( telem->stat == TELFRSKY_SRC ){
+    if( telem->parse.stat_br == TELFRSKY_STBR_SRC ){
       if( (tmp_telem = SerRead( ser_telem )) != TELEM_FRSKY_HEAD ){ continue; }
       else{
 	SerBytesWrite( ser_dbg, "7E " );
-	telem->stat = TELFRSKY_REC;
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
 	break;
       }
     }
     // state: recognition (begin/end separator)
-    if( telem->stat == TELFRSKY_REC ){
+    if( telem->parse.stat_br == TELFRSKY_STBR_REC ){
       // separator: begin
       if( (tmp_telem = SerRead( ser_telem )) != TELEM_FRSKY_TAIL ){
 	sprintf( dbg_str, "%02X ", tmp_telem );
 	SerBytesWrite( ser_dbg, dbg_str );
-	telem->stat = TELFRSKY_RD;
+	telem->parse.stat_br = TELFRSKY_STBR_RD;
 	break;
       }
       // separator: end
       else{
-	/* SerBytesWrite( ser_dbg, "7E " ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
+	SerBytesWrite( ser_dbg, "7E " );
       }
     }
-    if( telem->stat == TELFRSKY_RD ){
+    if( telem->parse.stat_br == TELFRSKY_STBR_RD ){
       // data body (w/ bit stuffing)
       if( (tmp_telem = SerRead( ser_telem )) == TELEM_FRSKY_BS00 ){
 	/* SerBytesWrite( ser_dbg, "!7D" ); */
-	telem->stat = TELFRSKY_RD_BS;
+	telem->parse.stat_br = TELFRSKY_STBR_RD_BS;
 	break;
       }
       // data body
       else if( tmp_telem != TELEM_FRSKY_TAIL ){
-	/* sprintf( dbg_str, "%02X ", tmp_telem ); */
-	/* SerBytesWrite( ser_dbg, dbg_str ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
+	sprintf( dbg_str, "%02X ", tmp_telem );
+	SerBytesWrite( ser_dbg, dbg_str );
       }
       // data end
       else{
-	/* SerBytesWrite( ser_dbg, "7E \n\r" ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );
-	telem->stat = TELFRSKY_REC;
+	SerBytesWrite( ser_dbg, "7E \n\r" );
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
 	break;
       }
     }
-    if( telem->stat == TELFRSKY_RD_BS ){
+    if( telem->parse.stat_br == TELFRSKY_STBR_RD_BS ){
       // conv 7D 5E => 7E
       if( (tmp_telem = SerRead( ser_telem )) == TELEM_FRSKY_BS10 ){
 	/* SerBytesWrite( ser_dbg, "!5E " ); */
-	/* SerBytesWrite( ser_dbg, "7D " ); */
-	TelemFrskyDParseEncue( &(telem->parse), TELEM_FRSKY_BS10_ );
-	telem->stat = TELFRSKY_REC;
+	SerBytesWrite( ser_dbg, "7D " );
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
       }
       // conv 7D 5D => 7D
       else if( tmp_telem == TELEM_FRSKY_BS11 ){
 	/* SerBytesWrite( ser_dbg, "!5D " ); */
-	/* SerBytesWrite( ser_dbg, "7E " ); */
-	TelemFrskyDParseEncue( &(telem->parse), TELEM_FRSKY_BS11_ );
-	telem->stat = TELFRSKY_REC;
+	SerBytesWrite( ser_dbg, "7E " );
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
       }
       else{
-	/* SerBytesWrite( ser_dbg, "FF " ); */
-	TelemFrskyDParseEncue( &(telem->parse), tmp_telem );	
-	telem->stat = TELFRSKY_REC;
+	SerBytesWrite( ser_dbg, "FF " );
+	telem->parse.stat_br = TELFRSKY_STBR_REC;
       }
     }
   }
