@@ -12,8 +12,8 @@ CC		= $(TOOLCHAIN)-gcc
 CP		= $(TOOLCHAIN)-objcopy
 SIZE	= $(TOOLCHAIN)-size
 
-CFLAGS	+= -O0 -ffunction-sections -fdata-sections
-LFLAGS	= -Wl,--gc-sections
+CFLAGS	+= -O0 -ffunction-sections -fdata-sections #-I/usr/local/rx-elf/include
+LFLAGS	= -Wl,--gc-sections #-L/usr/local/rx-elf/lib
 CPFLAGS	= -Obinary
 ##AFLAGS :=-Wall -I"$(GNU_PATH)rx-elf/include" -I. -I"$(GNU_PATH)lib/gcc/rx-elf/$(GCC_VERSION)/include" -I"$(GNU_PATH)rx-elf/include/c++/$(GCC_VERSION)/" -I"$(GNU_PATH)rx-elf/include/c++/$(GCC_VERSION)/rx-elf/64-bit-double/" -ffunction-sections -fno-function-cse -fsigned-char -fdata-sections -DTESTING=1 -DGRSAKURA -DARDUINO=100 -DCPPAPP -D__RX_LITTLE_ENDIAN__=1 -D__T4__ -O2 -flto -mlittle-endian-data -mcpu=rx600 -m64bit-doubles
 

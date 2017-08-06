@@ -1,0 +1,37 @@
+set key box
+#set key graph 0.1, graph 0.1
+#set key right top height 1.0 spacing 2
+set key outside
+set xlabel "time [sec]"
+set ylabel "Phase [rad]"
+#set xtics 10.0
+#set ytics 0.20
+set grid
+set xzeroaxis lw 0.5 lt -1
+set size 1.5,1.5
+set terminal postscript enhanced
+#set terminal postscript eps
+#set output "grayzone.eps"
+
+set terminal png
+set output "phase_clk_jjs.png"
+
+#set label 1 "{/Symbol m}=%1.3g [{/Symbol m}A], ", a, "  {/Symbol s}=%1.3g [{/Symbol m}A]", b at graph 0.65, graph 0.55
+#set label 3 "grayzone=%1.3g [{/Symbol m}A]", gz at graph 0.65, graph 0.50
+
+plot [][] 'OUT' using 1:13 w l title "CLK01_JJ2",\
+'OUT' using 1:14 w l title "CLK02_JJ2",\
+'OUT' using 1:15 w l title "CLK03_JJ2",\
+'OUT' using 1:16 w l title "CLK04_JJ2",\
+'OUT' using 1:17 w l title "CLK05_JJ2",\
+'OUT' using 1:18 w l title "CLK06_JJ2",\
+'OUT' using 1:19 w l title "CLK07_JJ2",\
+'OUT' using 1:20 w l title "CLK08_JJ2",\
+'OUT' using 1:21 w l title "CLK09_JJ2",\
+'OUT' using 1:22 w l title "CLK10_JJ2",\
+'OUT' using 1:23 w l title "OUT01_JJ2",\
+'OUT' using 1:24 w l title "OUT05_JJ2",\
+'OUT' using 1:25 w l title "OUT10_JJ2"
+
+set terminal windows
+set output

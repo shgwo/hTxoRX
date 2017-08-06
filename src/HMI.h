@@ -20,7 +20,8 @@
 //    2016.04.16  add codes to operate TPU & ADC w/ synccronization
 //                (interrupt codes are not included yet..)
 //    2016.12.25  SW port reassignment. Porting PC0 as CD function
-//                of SD card slot & PC52 newly assigned for replacement. 
+//                of SD card slot & PC52 newly assigned for replacement.
+//    2017.08.05  add functionally to monitor remote battery gaging
 //
 #ifndef __HMI_H__
 #define __HMI_H__
@@ -33,6 +34,7 @@
 #include "hTxoRX.h"
 #include "adc_sar12b.h"
 #include "serial.h"
+#include "telem_frsky.h"
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
@@ -106,11 +108,13 @@ enum enum_HMI_SND_PITCH {
 
 #define HMI_CYCLE      1    // system: loop cycle (ms)  /* unused */
 #define HMI_CYCLE_IN   1    // input loop cycle (ms)    /* unused */
-#define HMI_CYCLE_OUT  10   // output loop cycle (ms)   /* unused */
+#define HMI_CYCLE_OUT  10   // output loop cycle (ms)
 
 #define HMI_SW_ON_THR  5    // cycle ( * CMT1 cycle )
 
-#define HMI_LED_FB_LEN 80   // cycle ( * CMT1 cycle )
+#define HMI_LED_FB_LEN   80     // cycle ( * CMT1 cycle * HMI_CYCLE_OUT )
+#define HMI_LED_TELM_SLEN 10   // cycle ( * CMT1 cycle * HMI_CYCLE_OUT )
+#define HMI_LED_TELM_LLEN 10   // cycle ( * CMT1 cycle * HMI_CYCLE_OUT )
 
 #define HMISndGetPitch(freq) (uint16_t)((double)(4*12*1000000 / 256)/((double)(freq)))
 #define HMI_SND_TEMPO_BbHASE   20  // cycle ( * CMT1 cycle )
@@ -119,7 +123,7 @@ enum enum_HMI_SND_PITCH {
 #define HMI_SND_MOR_L_LEN    50  // cycle ( * CMT1 cycle )
 #define HMI_SND_BUFF         20  // num of beep
 
-#define HMI_SELFT_DT         100  // cycle ( * CMT1 cycle )
+#define HMI_SELFT_DT         1000  // cycle ( * CMT1 cycle )
 
 // -------------------------------------------------------
 // ----------------------------------------------- Structs
@@ -159,6 +163,8 @@ typedef struct st_HMI {
   uint16_t cnt_led;
   uint16_t cnt_ppm;
   uint16_t cnt_bat;
+  uint16_t cnt_telm_s; // short (mission critical)
+  uint16_t cnt_telm_l; // log (normal HMI)
 } st_HMI;
 
 // -------------------------------------------------------

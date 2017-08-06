@@ -31,7 +31,7 @@ uint8_t HMISysTmrInit( void ){
   // case2: td_out = 10ms, 100Hz = 12MHz * 2^2 / 2^9 / {~2^(1+2+7)}
   //                             =  3MHz * 2^4 / 2^9 / {~937}
   CMT1.CMCR.BIT.CKS = CMT_CKS_PCLK_512;  // PCLK / 512;
-  CMT1.CMCOR = 0x005C;                   // PCLK / 2^9 / 93 (0to92)
+  CMT1.CMCOR = 0x005C;                   // PCLK / 2^9 / 93 (0to92, case1)
   /* CMT1.CMCOR = 0x03A9;                   // PCLK / 2^9 / 937 (0t0936) */
   CMT1.CMCR.BIT.CMIE = CMIE_EN;          // interrupt flag enable
   IEN( CMT1, CMI1 ) = 0;
@@ -452,13 +452,13 @@ uint8_t HMILEDPPMAct( st_HMI *hmi, st_hTx *htx, uint8_t div){
 uint8_t HMILEDBatLow( st_HMI *hmi, st_hTx *htx, uint8_t cyc ){
   // temp var
   uint8_t temp = 0;
-  // battery indicating cycle
+  // battery indicating cycle regulator
   if( (hmi->cnt_bat++ != cyc ) ){
     return ( 0 );
   }else{
     hmi->cnt_bat = 0;
   }
-  // battery indicater routine
+  // battery indicator routine (3 steps)
   switch( htx->opmd_bat ){
     // deadly low
   case OPMD_BAT_DEAD:
@@ -469,7 +469,7 @@ uint8_t HMILEDBatLow( st_HMI *hmi, st_hTx *htx, uint8_t cyc ){
   case OPMD_BAT_LOW:
     temp = PORT2.PODR.BIT.B2;
     PORT2.PODR.BIT.B2 = !PORT2.PODR.BIT.B2;
-    /* sounder control:  */
+    /* sounder control: when idicate level goes to "H" */
     if( (temp == 0) && (PORT2.PODR.BIT.B2 == 1) )
       hmi->snd_state_fb = 1;
     break;
@@ -488,11 +488,58 @@ uint8_t HMILEDBatLow( st_HMI *hmi, st_hTx *htx, uint8_t cyc ){
   return( 0 );
 }
 
-uint8_t HMILEDSetRGB( st_HMI *hmi ){
-  MTU4.TGRA = hmi->LED_RGB[HMI_LED_R];  // Red
-  MTU0.TGRC = hmi->LED_RGB[HMI_LED_G];  // Green
-  MTU4.TGRC = hmi->LED_RGB[HMI_LED_B];  // Blue
-  //  TPU0.TGRC = hmi->LED_RGB[HMI_LED_B];  // Blue
+uint8_t HMILEDTelmRGB( st_HMI *hmi, st_hTx *htx, uint8_t cyc_s, uint8_t cyc_l ){
+  // temp var
+  uint8_t temp = 0;
+  
+  // telemetry indicating short cycle generator ( * HMI_CYCLE_OUT * cyc_s )
+  if( hmi->cnt_telm_s++ == cyc_s ){
+    hmi->cnt_telm_s = 0;  // renew count(short)
+    // telemetry indicating long cycle generator ( * HMI_CYCLE_OUT * cyc_s * cyc_l )
+    if( hmi->cnt_telm_l++ == cyc_l )
+      hmi->cnt_telm_l = 0;  // renew count(long)
+  }
+
+  // remote battery indicator routine
+  if( htx->opmd_telm == OPMD_TELM_BATL ){
+    if( hmi->cnt_telm_s <= HMI_LED_TELM_SLEN  ){  
+      hmi->LED_RGB[HMI_LED_R] = 0xAF00;  // Red
+      hmi->LED_RGB[HMI_LED_G] = 0x0100;  // Green
+      hmi->LED_RGB[HMI_LED_B] = 0x8F00;  // Blue
+      hmi->snd_state_fb = 1;  /* sounder control: frequent */
+    }
+  }
+
+  // telemetry link indicator routine
+  if( hmi->cnt_telm_l == 0 ){
+    if( hmi->cnt_telm_s <= HMI_LED_TELM_LLEN  ){  
+      switch( htx->opmd_telm ){
+      case OPMD_TELM_NFD:
+	hmi->LED_RGB[HMI_LED_R] = 0x04FF;  // Red
+	hmi->LED_RGB[HMI_LED_G] = 0xAF00;  // Green
+	hmi->LED_RGB[HMI_LED_B] = 0x6FFF;  // Blue
+	break;
+      case OPMD_TELM_ESTB:
+	hmi->LED_RGB[HMI_LED_R] = 0x1F00;  // Red
+	hmi->LED_RGB[HMI_LED_G] = 0xAF00;  // Green
+	hmi->LED_RGB[HMI_LED_B] = 0x00FF;  // Blue
+	break;
+      case OPMD_TELM_WEAK:
+	hmi->LED_RGB[HMI_LED_R] = 0xAF00;  // Red
+	hmi->LED_RGB[HMI_LED_G] = 0x8F00;  // Green
+	hmi->LED_RGB[HMI_LED_B] = 0x001F;  // Blue
+	break;
+      case OPMD_TELM_LOST:
+	hmi->LED_RGB[HMI_LED_R] = 0xAF00;  // Red
+	hmi->LED_RGB[HMI_LED_G] = 0x1F00;  // Green
+	hmi->LED_RGB[HMI_LED_B] = 0x00FF;  // Blue
+	break;
+      default: // OPMD_TELM_OFF
+	break;
+      }
+    }
+  }
+  
   return( 0 );
 }
 
@@ -552,6 +599,14 @@ uint8_t HMILEDFBRGB( st_HMI *hmi ){
   return( 0 );
 }
 
+uint8_t HMILEDSetRGB( st_HMI *hmi ){
+  MTU4.TGRA = hmi->LED_RGB[HMI_LED_R];  // Red
+  MTU0.TGRC = hmi->LED_RGB[HMI_LED_G];  // Green
+  MTU4.TGRC = hmi->LED_RGB[HMI_LED_B];  // Blue
+  //  TPU0.TGRC = hmi->LED_RGB[HMI_LED_B];  // Blue
+  return( 0 );
+}
+
 uint8_t HMILEDSetRGBMode( st_HMI *hmi, st_hTx * htx ){
   // RGB mode indicator
   switch( htx->opmd ){
@@ -581,6 +636,7 @@ uint8_t HMILEDSetRGBMode( st_HMI *hmi, st_hTx * htx ){
     hmi->LED_RGB[HMI_LED_B] = 0x00FF;  // Blue
     break;
   }
+  HMILEDTelmRGB( hmi, htx, 50, 2 );
   HMILEDFBRGB( hmi );
   HMILEDSetRGB( hmi );
   return( 0 );

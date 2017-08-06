@@ -18,7 +18,9 @@
 //  history:
 //    2016.04.08  create for RX63N( GR-SAKURA ) base-system
 //    2016.04.16  add codes to operate TPU & ADC w/ synccronization
-//                (interrupt codes are not included yet..) 
+//                (interrupt codes are not included yet..)
+//    2016.12.17  adjucstment switcher on booting (CPPM / SBUS)  
+//    2017.06.09  updates state machine to get telemetry capability
 //
 
 // -------------------------------------------------------
@@ -40,7 +42,7 @@
 
 // -------------------------------------------------------
 // ----------------------------------------------- Defines
-#define sleep(X) for(j=0 ; j < X*1000 ; j++){ }  // wait for X ms
+#define sleep(X) for(j=0 ; j < X*1000 ; j++){ }  // wait for X ms (?)
 
 //#define NCH_ADC 21   // number of AD channel on the HW
 
@@ -86,24 +88,8 @@ int main( void )
   
   // Close mission critical register
   SysCoreLock();
-  
-  //
-  // %%add%% init IO Port
-  //
-  // < Available IO Ports @ RX63N 100pin > *under construction
-  //   PORT0 [P03, P05]                  (x2)
-  //   PORT1 [P14 -> P17]                (x4)
-  //   PORT2 [P26, P27]                  (x2)
-  //   PORT3 [P30 -> P32, P35]           (x4)
-  //   PORT4 [P40 -> P44, P46]           (x6)
-  //   PORT5 [P54, P55]                  (x2)
-  //   PORTA [PA0, PA1, PA3, PA4, PA6]   (x5)
-  //   PORTB [PB0, PB1, PB3, PB5 -> PB7] (x5)
-  //   PORTC [PC2 -> PC7]                (x6)
-  //   PORTE [PE0 -> PE7]                (x8)
-  //   PORTH [PH0 -> PH3 *PH6, *PH7]     (x4(*6))
-  //   PORTJ [PJ3, PJ5]                  (x(*2))
 
+  
   // IO & Peri Port setting
   SysMPCUnlock();
   // LED extention board  
@@ -134,24 +120,39 @@ int main( void )
   // setting for Rotary encoder
   /* HMIPortInFuncInit( ); */  
 
+  sleep( 1000 );
+  
   // initializing PPM ch val ( * beta func *)
   // Name labels for each PPM ch
   char ppm_chname[PPM_N_CH][10] = { "Roll", "Pitch", "Throttle", "Yaw", "Arm", "AUX2", "FiteMD", "AUX4" };
   // set adj ( name str, ad_ch, inv, offset, gain )
-  PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 132 * 6), 0.5 ); // Roll
-  PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 147 * 6), 0.5 ); // Roll(SBUS)
-  PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 196 * 6), 0.5 ); // Pitch
-  PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 211 * 6), 0.5 ); // Pitch(SBUS)
+  PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 133 * 6), 0.5 ); // Roll
+  PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 198 * 6), 0.5 ); // Pitch
   PPMGenAdjInit( &ppm.adj[2], ppm_chname[2],  0, PPMADJ_NOINV, -( 224 * 6), 0.5 ); // Throttle
-  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 297 * 6), 0.5 ); // Yaw
-  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 311 * 6), 0.5 ); // Yaw(SBUS)
+  PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 300 * 6), 0.5 ); // Yaw
   PPMGenAdjInit( &ppm.adj[4], ppm_chname[4], 22, PPMADJ_NOINV,           0, 1.0 ); // Arm
   PPMGenAdjInit( &ppm.adj[5], ppm_chname[5],  4, PPMADJ_NOINV,           0, 1.0 ); // AUX2
   PPMGenAdjInit( &ppm.adj[6], ppm_chname[6], 22, PPMADJ_NOINV,           0, 1.0 ); // FliteMD
   PPMGenAdjInit( &ppm.adj[7], ppm_chname[7], 22, PPMADJ_NOINV,           0, 1.0 ); // AUX4
 
+  // boot strap switch for SBUS receiver
+  //  if( !PORTE.PIDR.BIT.B4 ){
+  if( HMISWState( &hmi, HMI_SW_R1_KEY ) ){  
+    PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 147 * 6), 0.5 ); // Roll(SBUS)
+    PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 211 * 6), 0.5 ); // Pitch(SBUS)
+    PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 311 * 6), 0.5 ); // Yaw(SBUS)
+  }
   PPMGenStart();
-  
+
+  // boot strap switch for SBUS receiver
+  //  if( !PORTE.PIDR.BIT.B4 ){
+  if( HMISWState( &hmi, HMI_SW_R1_KEY ) ){  
+    PPMGenAdjInit( &ppm.adj[0], ppm_chname[0],  2, PPMADJ_NOINV, -( 130 * 6), 0.5 ); // Roll(SBUS)
+    PPMGenAdjInit( &ppm.adj[1], ppm_chname[1],  3, PPMADJ_INV,   -( 195 * 6), 0.5 ); // Pitch(SBUS)
+    PPMGenAdjInit( &ppm.adj[3], ppm_chname[3],  1, PPMADJ_INV,   -( 300 * 6), 0.5 ); // Yaw(SBUS)
+  }
+  PPMGenStart();
+
   // 
   // Main routine begin
   //
@@ -170,13 +171,13 @@ int main( void )
   hTxSetMode( &htx, OPMD_SAFE);
   //SerWrite( &ser[UART_MSP], 0xA1 );
   sleep( 1000 );
-
+  
   // main loop
   while(1) {
     // mission-critical loop
     
     
-    // state machine
+    // state machine ( control )
     switch( htx.opmd ){
       // SAFE mode; ARM => not ARMed
       //            throttle => zero
@@ -229,38 +230,6 @@ int main( void )
     default:
       break;
     }
-
-    // get ADC val & arrange for PPM ch
-    // future func => PPMGenInputSelector()
-    /* ADC12GetVal( &adc12 ); */
-    /* PPMGenInputFilter( &ppm, &adc12 ); */
-    /* /\* if( IR( S12AD, S12ADI0) == 1 ){ *\/ */
-    /*   //adc_val[0] = (S12AD.ADDR2 >> (2 + 2) ) + (182 * 6); // Roll (old) */
-    /*   /\* adc_val[0] = (uint16_t)( 1.0*(S12AD.ADDR2 >> (2 + 1) ) - (132 * 6) ); // Roll *\/ */
-    /*   adc_val[0] = (uint16_t)( 1.0*( adc12.data[2] >> (2 + 1) ) - (132 * 6) ); // Roll */
-    /*   //adc_val[1] = (S12AD.ADDR3 >> (2 + 2) ) + (162 * 6); // Pitch (old NINV) */
-    /*   //adc_val[1] = (~S12AD.ADDR3 >> (2 + 2) ) +(833 * 6); // Pitch (old) */
-    /*   /\* adc_val[1] = (uint16_t)( 1.0*(~S12AD.ADDR3 >> (2 + 1) ) + (1168 * 6) ); // Pitch *\/ */
-    /*   adc_val[1] = (uint16_t)( 1.0*( ~adc12.data[3] >> (2 + 1) ) + (1168 * 6) ); // Pitch */
-    /*   //adc_val[2] = (S12AD.ADDR0 >> (2 + 2) ) - (114 * 6); // Throttle (old) */
-    /*   /\* adc_val[2] = (uint16_t)( 1.0*(S12AD.ADDR0 >> (2 + 1) ) - (224 * 6) ); // Throttle (971 - 1932) *\/ */
-    /*   adc_val[2] = (uint16_t)( 1.0*( adc12.data[0] >> (2 + 1) ) - (224 * 6) ); // Throttle (971 - 1932) */
-    /*   //adc_val[3] = (S12AD.ADDR1 >> (2 + 2) ) + (209 * 6); // Yaw (NINV) */
-    /*   //adc_val[3] = (~S12AD.ADDR1 >> (2 + 2) ) + (783 * 6); // Yaw (INV old) */
-    /*   /\* adc_val[3] = (uint16_t)( 1.0*(~S12AD.ADDR1 >> (2 + 1) ) + (1069 * 6) ); // Yaw (INV) *\/ */
-    /*   adc_val[3] = (uint16_t)( 1.0*( ~adc12.data[1] >> (2 + 1) ) + (1069 * 6) ); // Yaw (INV) */
-    /*   adc_val[4] = 0; */
-    /*   adc_val[5] = 0; */
-    /*   /\* adc_val[6] = (uint16_t)( 1.0*(S12AD.ADDR5 >> (2 + 1)) ); // AUX3 *\/ */
-    /*   adc_val[6] = (uint16_t)( 1.0*( adc12.data[4] >> (2 + 1)) ); // AUX3 */
-    /*   adc_val[7] = 0; */
-
-      /* adc_bat = (S12AD.ADDR13 >> (2 + 0) ); */
-      adc_bat = ( adc12.data[13] >> (2 + 0) );
-    /*   IR( S12AD, S12ADI0 ) = 0; */
-    /* } */
-    // future func => PPMGenSafeChecker()  <- safe limiter
-    // future func => PPMGenOutputFilter() <- LUT-base / Filt-matrix  conversion
     
     // battery check
     // series res Vbat = Vli2S * (3kOhm / 8kOhm)
@@ -272,30 +241,58 @@ int main( void )
     // Dad_mid = 7.4 * 3/8 / 3.3 * 2^14 = 3.0 *k = 1.16 * 11680 = 13777
     // Dad_hgh = 8.0 * 3/8 / 3.3 * 2^14 = 3.0 *k = 1.25 * 11680 = 14894
     // Dad_max = 8.4 * 3/8 / 3.3 * 2^14 = 3.15*k = 0.957 * 2^14 ~ 960 * 16 = 15640
+    // get val
+    adc_bat = ( adc12.data[13] >> (2 + 0) );
+    // state tran
     if( adc_bat < 12000 ){
-      htx.opmd_bat = OPMD_BAT_DEAD;
+      hTxSetModeBat( &htx, OPMD_BAT_DEAD );
     }else if( adc_bat < 13400 ){
-      htx.opmd_bat = OPMD_BAT_LOW;
+      hTxSetModeBat( &htx, OPMD_BAT_LOW );
     }else if( adc_bat < 14000 ){
-      htx.opmd_bat = OPMD_BAT_MID;
+      hTxSetModeBat( &htx, OPMD_BAT_MID );
     }else{
-      htx.opmd_bat = OPMD_BAT_FULL;
+      hTxSetModeBat( &htx, OPMD_BAT_FULL );
     }
     
-    // Motors disarming check
-    adc_val[4] = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (300 * 6) );
-    if( htx.opmd != OPMD_RUN ){
-      adc_val[2] = 0; // Throttle
-    }
+    // Motors disarming check    
     adc_arm = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (50 * 6) ) : (300 * 6) );
     PPMGenSetVal( &ppm, 4, adc_arm );
     // Throttle control ( force zero when disarmed )
     if( htx.opmd != OPMD_RUN ){ PPMGenSetVal( &ppm, 2, 0 ); }
+    
+    // Motors disarming check (old)
+    adc_val[4] = ( (htx.opmd == OPMD_RUN) ? ((htx.opmd_log == OPMD_LOG_ON) ? 0 : (100 * 6) ) : (300 * 6) );
+    if( htx.opmd != OPMD_RUN ){
+      adc_val[2] = 0; // forcing Throttle zero
+    }
 
+    // beeping out
+    if( HMILongPress( &hmi, HMI_SW_L2_LCK, 1000 ) ){
+      PPMGenSetVal( &ppm, 6, (1800 * 6) );  // AUX6 => 1800
+    }
+    
+    // Mode quick shift
+    if( HMILongPress( &hmi, HMI_SW_MD_B, 100 ) ){
+      PPMGenSetVal( &ppm, 5, (800 * 6) );
+    }
+    else if( HMILongPress( &hmi, HMI_SW_MD_F, 100 ) ){
+      PPMGenSetVal( &ppm, 5, (50 * 6) );
+    }
+    else{
+      PPMGenSetVal( &ppm, 5, (150 * 6) );
+    }
+
+    
+    // volume 
+
+    // 
+    
     // PPM generation core
     PPMGen( &ppm, &adc12 );
     hmi.cnt_ppm = ppm.cnt_end;
-    
+    // future func => PPMGenSafeChecker()  <- safe limiter
+    // future func => PPMGenOutputFilter() <- LUT-base / Filt-matrix  conversion
+
     /* adc_val[0] = ppm.data[0]; // Roll */
     /* adc_val[1] = ppm.data[1]; // Pitch */
     /* adc_val[2] = ppm.data[2]; // Throttle */
@@ -331,18 +328,46 @@ int main( void )
     SerDaemon( &ser[UART_IOA] );
     SerDaemon( &ser[UART_TELEM] );
     // Back gound processes (Telemetry) /* future func */
-    TelemFrskyD( &telem, &ser[UART_TELEM], &ser[UART_IOA] );
+    TelemFrskyD( &telem, &ser[UART_TELEM] );
+
+    // state machine ( telemetry )
+    switch( telem.parse.stat_safe ){
+    case TELM_SAFE_NFD:
+      hTxSetModeTelm( &htx, OPMD_TELM_NFD );
+      break;
+    case TELM_SAFE_ESTB:
+      hTxSetModeTelm( &htx, OPMD_TELM_ESTB );
+      break;
+    case TELM_SAFE_WEAK:
+      hTxSetModeTelm( &htx, OPMD_TELM_WEAK );
+      break;
+    case TELM_SAFE_LOST:
+    case TELM_SAFE_LOSTL:
+    case TELM_SAFE_LOSTU:
+      hTxSetModeTelm( &htx, OPMD_TELM_LOST );
+      break;
+    default:
+      break;
+    }
+    // check & force tran to battery Low state
+    if( (htx.opmd_telm == OPMD_TELM_ESTB) || (htx.opmd_telm == OPMD_TELM_WEAK) )
+      if( telem.parse.IDS.SEN.volt <= 0x0734 ) // 0x0734 = 3.7V
+	hTxSetModeTelm( &htx, OPMD_TELM_BATL );	
+    // manually telemetry off check
+    if( HMILongPress( &hmi, HMI_SW_L2_KEY, 1000 ) )
+      hTxSetModeTelmTglOnOff( &htx );
     
     // Back gound processes (HMI)
     HMIFlash( &hmi, &htx );
     //if( Ser12ReadBG( &ser[UART_TELEM] ); ){
-      // error sequence
+    // error sequence
       
     //}
     //SerWriteTest( &ser[UART_MSP], mode_test );
     /* HMILEDBatLow( &hmi, op_md_bat ); */
     /* HMILEDSetRGB( &hmi, op_md );  */
- 
+
+    
     // debug routine
     // LED indication (for debug, printf)
     if( !HMISWState( &hmi, HMI_SW_R2_B ) ){
@@ -352,80 +377,37 @@ int main( void )
       //SerBytesWrite( &ser[UART_IOA], "hTxoRX: IOA test stream.\n\r");
       dbg_in = SerRead( &ser[UART_MSP]);
       dbg_in = dbg_in | SerRead( &ser[UART_IOA]);
-      if( dbg_in == 'd' ){
-	/* SerBytesWrite( &ser[UART_MSP], "<dbg toggle>"); */
-	dbg_tgl = ~dbg_tgl;
-	sprintf( dbg_str, "dbg toggle: [%01X]\n\r", dbg_tgl );
+      switch( dbg_in ){
+      case 'd':
+	if( dbg_tgl )
+	  dbg_tgl = 0;
+	else
+	  dbg_tgl = 'd';
+	sprintf( dbg_str, "dbg toggle: [%01X] (debug telemetry stream out)\n\r", dbg_tgl );
 	SerBytesWrite( &ser[UART_IOA], dbg_str );
+	break;
+      case 't':
+	if( dbg_tgl )
+	  dbg_tgl = 0;
+	else
+	  dbg_tgl = 't';
+	sprintf( dbg_str, "dbg toggle: [%01X] (debug telemetry status disp)\n\r", dbg_tgl );
+	SerBytesWrite( &ser[UART_IOA], dbg_str );
+	break;
+      case 's':
+	if( dbg_tgl )
+	  dbg_tgl = 0;
+	else
+	  dbg_tgl = 's';
+	sprintf( dbg_str, "dbg toggle: [%01X] (debug hTxoRX status disp)\n\r", dbg_tgl );
+	SerBytesWrite( &ser[UART_IOA], dbg_str );
+	break;
+      default:
+	break;
       }
-      // debug on each operation loop
-      if( dbg_tgl ){
+      // debug print on each operation loop
+      if( dbg_tgl == 'd' ){
 	TelemFrskyDdbgBRPrint( &telem, &ser[UART_IOA] );
-	/* TelemFrskyDdbg( &telem, &ser[UART_TELEM], &ser[UART_IOA] ); */
-	/* while( SerReadable( &ser[UART_TELEM] ) ){ */
-	/*   // state: search (begin/end separator) */
-	/*   if( telem.parse.stat == TELFRSKY_SRC ){ */
-	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){ continue; } */
-	/*     else{ */
-	/*       SerBytesWrite( &ser[UART_IOA], "7E " ); */
-	/*       telem.parse.stat = TELFRSKY_REC; */
-	/*       break; */
-	/*     } */
-	/*   } */
-	/*   // state: recognition (begin/end separator) */
-	/*   if( telem.parse.stat == TELFRSKY_REC ){ */
-	/*     // separator: begin */
-	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) != 0x7e ){ */
-	/*       telem.parse.stat = TELFRSKY_RD; */
-	/*       sprintf( dbg_str, "%02X ", dbg_telem ); */
-	/*       SerBytesWrite( &ser[UART_IOA], dbg_str ); */
-	/*       break; */
-	/*     } */
-	/*     // separator: end */
-	/*     else{ */
-	/*       SerBytesWrite( &ser[UART_IOA], "7E " ); */
-	/*     } */
-	/*   } */
-	/*   if( telem.parse.stat == TELFRSKY_RD ){ */
-	/*     // data body (w/ bit stuffing) */
-	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x7d ){ */
-	/*       /\* SerBytesWrite( &ser[UART_IOA], "!7D" ); *\/ */
-	/*       telem.parse.stat = TELFRSKY_RD_BS; */
-	/*       break; */
-	/*     } */
-	/*     // data body */
-	/*     else if( dbg_telem != 0x7e ){ */
-	/*       sprintf( dbg_str, "%02X ", dbg_telem ); */
-	/*       SerBytesWrite( &ser[UART_IOA], dbg_str ); */
-	/*     } */
-	/*     // data end */
-	/*     else{ */
-	/*       telem.parse.stat = TELFRSKY_REC; */
-	/*       SerBytesWrite( &ser[UART_IOA], "7E \n\r" ); */
-	/*       break; */
-	/*     } */
-	/*   } */
-	/*   if( telem.parse.stat == TELFRSKY_RD_BS ){ */
-	/*     // conv 7D 5E => 7E */
-	/*     if( (dbg_telem = SerRead( &ser[UART_TELEM] )) == 0x5e ){ */
-	/*       /\* SerBytesWrite( &ser[UART_IOA], "!5E " ); *\/ */
-	/*       SerBytesWrite( &ser[UART_IOA], "7E " ); */
-	/*       telem.parse.stat = TELFRSKY_REC; */
-	/*     } */
-	/*     // conv 7D 5D => 7D */
-	/*     else if( dbg_telem == 0x5d ){ */
-	/*       /\* SerBytesWrite( &ser[UART_IOA], "!5D " ); *\/ */
-	/*       SerBytesWrite( &ser[UART_IOA], "7D " ); */
-	/*       telem.parse.stat = TELFRSKY_REC; */
-	/*     } */
-	/*     else{ */
-	/*       SerBytesWrite( &ser[UART_IOA], "FF " ); */
-	/*       telem.parse.stat = TELFRSKY_REC; */
-	/*     } */
-	/*   } */
-	/* } */
-	/* SerBytesWrite( &ser[UART_IOA], "|" ); */
-	
 	/* sprintf( dbg_str, "head|%03d <=> %03d|tail  ", */
 	/* 	 ser[UART_TELEM].rx_head, ser[UART_TELEM].rx_tail ); */
 	/* SerBytesWrite( &ser[UART_IOA], dbg_str ); */
@@ -436,18 +418,24 @@ int main( void )
 	/* SerBytesWrite( &ser[UART_IOA], "\n\r" ); */
 	/* SerWrite( &ser[UART_IOA], SerRead( &ser[UART_TELEM] ) ); */
       }
-      if( (dbg_tgl) && (dbg_cnt++ == 0x00) ){
+      if( dbg_tgl == 't' ){
+	sprintf( dbg_str, "in progress... [%01X] \n\r", dbg_tgl );	
+      }
+      if( dbg_tgl == 's' ){
+	TelemFrskyDdbgStatPrint( &telem, &ser[UART_IOA] );
+      }
+      if( (~dbg_tgl) && (dbg_cnt++ == 0x00) ){
 	//SerBytesWrite( &ser[UART_IOA], "AT" );
 	//SerBytesRead( &ser[UART_TELEM], dat_telem );
 	/* test = SerRead( &ser[UART_TELEM] ); */
 	num_telem = SerBytesRead( &ser[UART_TELEM], dat_telem );
 	for( int i=0 ; i<num_telem ; i++ ){
 	  sprintf( dbg_str, "%02X ", dat_telem[i] );
-	  SerBytesWrite( &ser[UART_IOA], dbg_str );
+	  /* SerBytesWrite( &ser[UART_IOA], dbg_str ); */
 	}
 	/* SerBytesWrite( &ser[UART_IOA], dat_telem); */
 	if( num_telem ){
-	  SerBytesWrite( &ser[UART_IOA], "\n\r" );
+	  /* SerBytesWrite( &ser[UART_IOA], "\n\r" ); */
 	}
 	sprintf( dbg_str, "dbg:(0x%02X)[head %d/tail %d] ",
 		 dat_telem[0], ser[UART_TELEM].rx_head, ser[UART_TELEM].rx_tail );
@@ -499,7 +487,7 @@ int main( void )
       //SerWrite( &ser[UART_TELEM], (0x30 + (ser[UART_TELEM].rx_tail % 10)) );
       /* SerWrite( &ser[UART_MSP], ser[UART_TELEM].rx_head ); */
      
-	/* unsigned char test = ( S12AD.ADDR13 >> 12 ); */
+      /* unsigned char test = ( S12AD.ADDR13 >> 12 ); */
 
       /* if( (hmi.ppm_cnt >> 4) & 0x01 ){ */
       /* 	//	dbg = Ser12ReadTest( &ser[UART_TELEM] ); */
